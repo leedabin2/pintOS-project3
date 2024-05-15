@@ -1,11 +1,16 @@
 /* vm.c: Generic interface for virtual memory objects. */
 
+/* vm.c: 가상 메모리 객체에 대한 일반적인 인터페이스입니다. */
+
 #include "threads/malloc.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
+
+/* 가상 메모리 서브시스템을 각 서브시스템의 초기화 코드를 호출함으로써 초기화합니다. */
+
 void
 vm_init (void) {
 	vm_anon_init ();
@@ -21,6 +26,9 @@ vm_init (void) {
 /* Get the type of the page. This function is useful if you want to know the
  * type of the page after it will be initialized.
  * This function is fully implemented now. */
+
+/* 페이지의 타입을 가져옵니다. 이 함수는 페이지가 초기화된 후 그 타입을 알고 싶을 때 유용합니다.
+ * 이 함수는 현재 완전히 구현되어 있습니다. */
 enum vm_type
 page_get_type (struct page *page) {
 	int ty = VM_TYPE (page->operations->type);
@@ -40,6 +48,9 @@ static struct frame *vm_evict_frame (void);
 /* Create the pending page object with initializer. If you want to create a
  * page, do not create it directly and make it through this function or
  * `vm_alloc_page`. */
+
+/* 초기화자와 함께 보류 중인 페이지 객체를 생성합니다. 
+ * 페이지를 생성하고자 한다면, 직접 생성하지 말고 이 함수나 vm_alloc_page를 통해 생성하세요. */
 bool
 vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		vm_initializer *init, void *aux) {
@@ -61,6 +72,9 @@ err:
 }
 
 /* Find VA from spt and return page. On error, return NULL. */
+
+/* spt에서 VA를 찾아 페이지를 반환합니다. 오류가 발생하면 NULL을 반환합니다. */
+
 struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct page *page = NULL;
@@ -70,6 +84,8 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 }
 
 /* Insert PAGE into spt with validation. */
+
+/* 유효성 검사와 함께 spt에 PAGE를 삽입합니다. */
 bool
 spt_insert_page (struct supplemental_page_table *spt UNUSED,
 		struct page *page UNUSED) {
@@ -86,6 +102,8 @@ spt_remove_page (struct supplemental_page_table *spt, struct page *page) {
 }
 
 /* Get the struct frame, that will be evicted. */
+
+/* 추방될 struct frame을 가져옵니다. */
 static struct frame *
 vm_get_victim (void) {
 	struct frame *victim = NULL;
@@ -96,6 +114,9 @@ vm_get_victim (void) {
 
 /* Evict one page and return the corresponding frame.
  * Return NULL on error.*/
+
+/* 한 페이지를 쫓아내고 해당하는 프레임을 반환합니다.
+ * 오류가 발생하면 NULL을 반환합니다. */
 static struct frame *
 vm_evict_frame (void) {
 	struct frame *victim UNUSED = vm_get_victim ();
@@ -108,6 +129,11 @@ vm_evict_frame (void) {
  * and return it. This always return valid address. That is, if the user pool
  * memory is full, this function evicts the frame to get the available memory
  * space.*/
+
+/* palloc()을 호출하여 프레임을 획득합니다. 
+ * 사용 가능한 페이지가 없는 경우, 페이지를 쫓아내고 반환합니다. 
+ * 이 함수는 항상 유효한 주소를 반환합니다. 즉, 사용자 풀 메모리가 가득 찬 경우, 
+ * 이 함수는 프레임을 쫓아내어 사용 가능한 메모리 공간을 확보합니다. */
 static struct frame *
 vm_get_frame (void) {
 	struct frame *frame = NULL;
@@ -187,4 +213,6 @@ void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
+	/* TODO: 스레드가 보유한 모든 추가 페이지 테이블을 파괴하고, */
+	/* TODO: 수정된 모든 내용을 저장소에 다시 쓰세요. */
 }
