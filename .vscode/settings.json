@@ -54,6 +54,7 @@
     "streambuf": "c",
     "system_error": "c",
     "utility": "c",
-    "typeinfo": "c"
+    "typeinfo": "c",
+    "malloc.h": "c"
   }
 }

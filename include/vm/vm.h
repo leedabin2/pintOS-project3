@@ -2,6 +2,7 @@
 #define VM_VM_H
 #include <stdbool.h>
 #include "threads/palloc.h"
+#include "lib/kernel/hash.h"
 
 enum vm_type {
 	/* 페이지가 초기화되지 않은 상태 */
@@ -58,6 +59,7 @@ struct page {
 
 	/* 여러분의 구현 */
 	/* Your implementation */
+	struct hash_elem spt_entry;
 
 	/* 각 유형의 데이터가 union에 바인딩됩니다.
 	 * 각 함수는 현재 union을 자동으로 감지합니다. */
@@ -107,6 +109,7 @@ struct page_operations {
  * We don't want to force you to obey any specific design for this struct.
  * All designs up to you for this. */
 struct supplemental_page_table {
+	struct hash spt_hash;
 };
 
 #include "threads/thread.h"
@@ -119,7 +122,7 @@ struct page *spt_find_page (struct supplemental_page_table *spt,
 bool spt_insert_page (struct supplemental_page_table *spt, struct page *page);
 void spt_remove_page (struct supplemental_page_table *spt, struct page *page);
 
-void vm_init (void);
+void vm_init (void); 
 bool vm_try_handle_fault (struct intr_frame *f, void *addr, bool user,
 		bool write, bool not_present);
 
