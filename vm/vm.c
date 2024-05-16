@@ -5,6 +5,7 @@
 #include "threads/malloc.h"
 #include "vm/inspect.h"
 
+#include "threads/vaddr.h"
 #include "lib/kernel/hash.h"
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -67,18 +68,29 @@ err:
 }
 
 /* Find VA from spt and return page. On error, return NULL. */
-
 /* spt에서 VA를 찾아 페이지를 반환합니다. 오류가 발생하면 NULL을 반환합니다. */
-
+/* 목표 : va 를 가지고 page 찾기 
+    spt는 해시구조라 hasg_elem 을 가지고 page 찾아야함 */
 struct page *spt_find_page(struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
-    struct page *page = NULL;
+    // struct page *page = NULL;
     /* TODO: Fill this function. */
+    
+    // dummy page 를 만들어서 hash_elem 을 추출한다.
+    struct page *page = (struct page *)malloc(sizeof(struct page));
+    struct hash_elem *e;
 
-    return page;
+    page->va = pg_round_down(va); 
+    e = hash_find(&spt->spt_hash, &page->spt_entry); // 찾고자하는 va에 해당하는 페이지의 hash_elem 추출
+    free(page); // dummy page - free 하기 
+
+    if (e != NULL)
+    {
+        return hash_entry(e,struct page, spt_entry); // 실제 페이지 리턴
+    }
+    return NULL;
 }
 
 /* Insert PAGE into spt with validation. */
-
 /* 유효성 검사와 함께 spt에 PAGE를 삽입합니다. */
 bool spt_insert_page(struct supplemental_page_table *spt UNUSED, struct page *page UNUSED) {
     int succ = false;
