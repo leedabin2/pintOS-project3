@@ -183,6 +183,8 @@ static bool vm_do_claim_page(struct page *page) {
 
 /* Initialize new supplemental page table */
 void supplemental_page_table_init(struct supplemental_page_table *spt UNUSED) {
+    
+    hash_init(&spt->spt_hash, page_hash, page_less, NULL);
 }
 
 /* Copy supplemental page table from src to dst */
@@ -204,5 +206,39 @@ unsigned page_hash(struct hash_elem *p_, void *aux UNUSED){
 
     return hash_bytes(&page->va, sizeof(page->va));
 }
+
+/* */
+bool page_insert(struct hash *h, struct page *page) {
+    if (!hash_insert(h,&page->spt_entry))
+    {
+        return true;
+    }
+    return false;  
+}
+
+bool page_delete(struct hash *h, struct page *page) {
+    if (!hash_delete(h,&page->spt_entry))
+    {
+        return true;
+    }
+    return false;  
+}
+
+/* 보조 데이터 AUX가 주어진 두 해시 요소 a와 b의 값을 비교 */
+bool page_less(struct hash_elem *a, struct hash_elem *b, void *aux) {
+    struct page *page_a = hash_entry(a, struct page, spt_entry);
+    struct page *page_b = hash_entry(b, struct page, spt_entry);
+
+    if (page_a->va < page_b->va)
+    {
+        return true;
+    }
+    return false;    
+}
+
+
+
+
+
 
 
