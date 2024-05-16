@@ -142,9 +142,18 @@ static struct frame *vm_evict_frame(void) {
 static struct frame *vm_get_frame(void) {
     struct frame *frame = NULL;
     /* TODO: Fill this function. */
+    uint64_t *kva = palloc_get_page(PAL_USER); // palloc_get_page()를 통해 물리적 메모리를 할당하고, kva를 반환함
+
+    if (kva == NULL)
+        PANIC("todo : swap out 구현해야함.");
+    
+    struct frame *frame = (struct frame *)malloc(sizeof(struct frame));
+    frame->kva = kva;
+    frame->page = NULL;
 
     ASSERT(frame != NULL);
     ASSERT(frame->page == NULL);
+
     return frame;
 }
 
