@@ -93,10 +93,15 @@ struct page *spt_find_page(struct supplemental_page_table *spt UNUSED, void *va 
 /* Insert PAGE into spt with validation. */
 /* 유효성 검사와 함께 spt에 PAGE를 삽입합니다. */
 bool spt_insert_page(struct supplemental_page_table *spt UNUSED, struct page *page UNUSED) {
-    int succ = false;
+    // int succ = false;
     /* TODO: Fill this function. */
 
-    return succ;
+    // struct hash *hash = page_hash(&page->spt_entry, NULL);
+    // if (spt->spt_hash.hash == hash) 
+        // spt에 페이지 구조체 삽입
+    return page_insert(&spt->spt_hash, page);
+    
+    // return succ;
 }
 
 void spt_remove_page(struct supplemental_page_table *spt, struct page *page) {
@@ -105,7 +110,6 @@ void spt_remove_page(struct supplemental_page_table *spt, struct page *page) {
 }
 
 /* Get the struct frame, that will be evicted. */
-
 /* 추방될 struct frame을 가져옵니다. */
 static struct frame *vm_get_victim(void) {
     struct frame *victim = NULL;
