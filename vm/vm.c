@@ -145,7 +145,7 @@ static struct frame *vm_get_frame(void) {
     /* TODO: Fill this function. */
     uint64_t *kva = palloc_get_page(PAL_USER); // palloc_get_page()를 통해 물리적 메모리를 할당하고, kva를 반환함
 
-    if (kva == NULL) 
+    if (kva == NULL)
         PANIC("todo : swap out 구현해야함.");
     
     struct frame *frame = (struct frame *)malloc(sizeof(struct frame)); // frame table을 위한 메모리 할당
@@ -190,7 +190,17 @@ void vm_dealloc_page(struct page *page) {
 bool vm_claim_page(void *va UNUSED) {
     struct page *page = NULL;
     /* TODO: Fill this function */
+    // va에 page를 할당
+    // page = (struct page *)malloc(sizeof(page)); // 의문 : page 메모리 영역이 없는데 spt_find_page 를 먼저 사용해서 어케 page를 할당받음 ? -.-
+    // page->va = va;
 
+    // 해당 page에 프레임을 할당 
+    page = spt_find_page(&thread_current()->spt,va);
+    if (page == NULL)
+    {
+        return false;
+    }
+    
     return vm_do_claim_page(page);
 }
 
