@@ -772,7 +772,7 @@ static bool install_page(void *upage, void *kpage, bool writable);
  * or disk read error occurs. */
 static bool load_segment(struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes, uint32_t zero_bytes, bool writable) {
     ASSERT((read_bytes + zero_bytes) % PGSIZE == 0);
-    ASSERT(pg_ofs(upage) == 0);
+    ASSERT(pg_ofs(upage)  == 0);
     ASSERT(ofs % PGSIZE == 0);
 
     file_seek(file, ofs);
@@ -872,6 +872,11 @@ static bool lazy_load_segment(struct page *page, void *aux) {
     /* TODO: This called when the first page fault occurs on address VA. */
     /* TODO: VA is available when calling this function. */
 
+    struct aux * data = (struct aux *) aux;
+    file_read(data->file, page->va, data->page_read_bytes);
+
+    free(data);
+    return true;
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
@@ -915,6 +920,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage, uint32_t 
         read_bytes -= page_read_bytes;
         zero_bytes -= page_zero_bytes;
         upage += PGSIZE;
+        ofs += page_read_bytes;
     }
     return true;
 }
