@@ -65,16 +65,13 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
         /* TODO: Insert the page into the spt. */
         struct page *new_page = (struct page *)malloc(sizeof(struct page));
         bool (*initializer)(struct page *, enum vm_type, void *) ;
-        switch (type)
+        switch (VM_TYPE(type))
         {
-            case VM_UNINIT:
-                uninit_new(new_page, upage, init, VM_UNINIT, aux,  initializer);
-                break; 
             case VM_ANON:
-                uninit_new(new_page, upage, init, VM_UNINIT, aux,  anon_initializer);
+                uninit_new(new_page, upage, init, VM_ANON, aux, anon_initializer);
                 break;
             case VM_FILE:
-                uninit_new(new_page, upage, init, VM_UNINIT, aux,  file_backed_initializer);
+                uninit_new(new_page, upage, init, VM_FILE, aux, file_backed_initializer);
                 break;
         }
         bool ok = spt_insert_page(&thread_current()->spt, new_page);
@@ -199,7 +196,7 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool us
     /* TODO: Your code goes here */
     // 유효한 페이지 폴트인지 검사
     // 유효한 페이지 폴트라면 (위와 같은 상황) 에러 처리 
-    // 그렇지 않다면, bogus 폴트 (지연 로딩으로 인해 물리 메모리와 매핑 되어 있지만 콘텐츠가 로드되어 있지 않은 경우)
+    // 그렇지 않다면, bogus 폴트 (일단 , 지연 로딩의 경우)
     // 콘텐츠를 로드
     // bogus 폴트의 case - 지연 로딩 페이지 , 스왑 아웃 페이지, 쓰기 보호페이지 (extra)
     // 지연 로딩 페이지의 경우 - vm_alloc_page_with_initializer 함수에서 세팅해 놓은 초기화 함수를 호출
