@@ -4,6 +4,7 @@
 #include "vm/vm.h"
 #include "threads/malloc.h"
 #include "vm/inspect.h"
+#include "threads/mmu.h"
 
 #include "threads/vaddr.h"
 #include "lib/kernel/hash.h"
@@ -144,16 +145,16 @@ static struct frame *vm_get_frame(void) {
     /* TODO: Fill this function. */
     uint64_t *kva = palloc_get_page(PAL_USER); // palloc_get_page()를 통해 물리적 메모리를 할당하고, kva를 반환함
 
-    if (kva == NULL)
+    if (kva == NULL) 
         PANIC("todo : swap out 구현해야함.");
     
-    struct frame *frame = (struct frame *)malloc(sizeof(struct frame));
-    frame->kva = kva;
+    struct frame *frame = (struct frame *)malloc(sizeof(struct frame)); // frame table을 위한 메모리 할당
+    // 구조체 멤버 초기화
+    frame->kva = kva; 
     frame->page = NULL;
 
     ASSERT(frame != NULL);
     ASSERT(frame->page == NULL);
-
     return frame;
 }
 
@@ -196,12 +197,18 @@ bool vm_claim_page(void *va UNUSED) {
 /* Claim the PAGE and set up the mmu. */
 static bool vm_do_claim_page(struct page *page) {
     struct frame *frame = vm_get_frame();
-
+    struct thread *curr = thread_current();
     /* Set links */
     frame->page = page;
     page->frame = frame;
 
     /* TODO: Insert page table entry to map page's VA to frame's PA. */
+    // 가상주소와 물리주소를 매핑한 정보를 페이지 테이블에 추가
+    // 성공하면 true, 실패하면 false 
+    if (frame->page != NULL) {
+        if (!pml4_set_page(curr->pml4,page->va,frame->kva,NULL))
+            return false;
+    }
 
     return swap_in(page, frame->kva);
 }
