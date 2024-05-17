@@ -63,7 +63,29 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
          * TODO: should modify the field after calling the uninit_new. */
 
         /* TODO: Insert the page into the spt. */
+        struct page *new_page = (struct page *)malloc(sizeof(struct page));
+        bool (*initializer)(struct page *, enum vm_type, void *) ;
+        switch (type)
+        {
+            case VM_UNINIT:
+                uninit_new(new_page, upage, init, VM_UNINIT, aux,  initializer);
+                break; 
+            case VM_ANON:
+                uninit_new(new_page, upage, init, VM_UNINIT, aux,  anon_initializer);
+                break;
+            case VM_FILE:
+                uninit_new(new_page, upage, init, VM_UNINIT, aux,  file_backed_initializer);
+                break;
+        }
+        bool ok = spt_insert_page(&thread_current()->spt, new_page);
+
+        struct page *result = spt_find_page(&thread_current()->spt, upage);
+        if (result == NULL) {
+            goto err;
+        }
+        return true;
     }
+
 err:
     return false;
 }
@@ -145,7 +167,7 @@ static struct frame *vm_get_frame(void) {
     /* TODO: Fill this function. */
     uint64_t *kva = palloc_get_page(PAL_USER); // palloc_get_page()를 통해 물리적 메모리를 할당하고, kva를 반환함
 
-    if (kva == NULL)
+    if (kva == NULL) 
         PANIC("todo : swap out 구현해야함.");
     
     struct frame *frame = (struct frame *)malloc(sizeof(struct frame)); // frame table을 위한 메모리 할당
@@ -175,7 +197,13 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool us
     // 프로세스를 종료시키고 프로세스의 모든 자원을 해제합니다.
     /* TODO: Validate the fault */
     /* TODO: Your code goes here */
-
+    // 유효한 페이지 폴트인지 검사
+    // 유효한 페이지 폴트라면 (위와 같은 상황) 에러 처리 
+    // 그렇지 않다면, bogus 폴트 (지연 로딩으로 인해 물리 메모리와 매핑 되어 있지만 콘텐츠가 로드되어 있지 않은 경우)
+    // 콘텐츠를 로드
+    // bogus 폴트의 case - 지연 로딩 페이지 , 스왑 아웃 페이지, 쓰기 보호페이지 (extra)
+    // 지연 로딩 페이지의 경우 - vm_alloc_page_with_initializer 함수에서 세팅해 놓은 초기화 함수를 호출
+    // process.c 의 lazy_load_segment 함수 구현해야 함
     return vm_do_claim_page(page);
 }
 
