@@ -907,7 +907,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage, uint32_t 
         size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
         /* TODO: Set up aux to pass information to the lazy_load_segment. */
-        // 로드하려는 세그먼트의 종류를 파악
+        // aux를 설정 후 lazy_load_segment에 정보를 제공
         struct aux *aux = (struct aux *)malloc(sizeof(struct aux));
         aux->file = file;
         aux->ofs = ofs;
@@ -925,6 +925,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage, uint32_t 
     return true;
 }
 
+/* USER_STACK에 스택의 PAGE를 생성합니다. 성공 시 true를 반환합니다. */
 /* Create a PAGE of stack at the USER_STACK. Return true on success. */
 static bool setup_stack(struct intr_frame *if_) {
     bool success = false;
@@ -934,6 +935,18 @@ static bool setup_stack(struct intr_frame *if_) {
      * TODO: If success, set the rsp accordingly.
      * TODO: You should mark the page is stack. */
     /* TODO: Your code goes here */
+
+    /* TODO: stack_bottom에 스택을 매핑하고 페이지를 즉시 클레임합니다.
+     * TODO: 성공하면 rsp를 적절히 설정합니다.
+     * TODO: 페이지가 스택임을 표시해야 합니다. */
+    /* TODO: 여기에 여러분의 코드를 작성하세요 */
+    
+    if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)){
+		success = vm_claim_page (stack_bottom) ;// 페이지 할당 성공시 물리 프레임 생성 후 매핑 
+		if (success){
+			if_->rsp = USER_STACK;
+		}
+	}	
 
     return success;
 }
