@@ -134,4 +134,8 @@ void vm_dealloc_page (struct page *page);
 bool vm_claim_page (void *va);
 enum vm_type page_get_type (struct page *page);
 
+unsigned page_hash(struct hash_elem *p_, void *aux UNUSED);
+bool page_less(struct hash_elem *a, struct hash_elem *b, void *aux);
+bool page_insert(struct hash *h, struct page *page);
+bool page_delete(struct hash *h, struct page *page); 
 #endif  /* VM_VM_H */
