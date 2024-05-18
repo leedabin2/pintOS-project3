@@ -160,7 +160,7 @@ static struct frame *vm_evict_frame(void) {
  * 이 함수는 항상 유효한 주소를 반환합니다. 즉, 사용자 풀 메모리가 가득 찬 경우,
  * 이 함수는 프레임을 쫓아내어 사용 가능한 메모리 공간을 확보합니다. */
 static struct frame *vm_get_frame(void) {
-    struct frame *frame = NULL;
+    // struct frame *frame = NULL;
     /* TODO: Fill this function. */
     uint64_t *kva = palloc_get_page(PAL_USER); // palloc_get_page()를 통해 물리적 메모리를 할당하고, kva를 반환함
 
@@ -285,7 +285,7 @@ bool page_insert(struct hash *h, struct page *page) {
 
 bool page_delete(struct hash *h, struct page *page) {
     if (!hash_delete(h,&page->spt_entry))
-    {
+    {   
         return true;
     }
     return false;  
