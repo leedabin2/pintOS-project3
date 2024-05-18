@@ -181,6 +181,7 @@ void exit(int status) {
     if (first_token != NULL) {
         // 토큰이 성공적으로 추출되었다면, 이를 다루는 로직
           printf("%s: exit(%d)\n", first_token, t->exit_status);
+        //   printf("%s: exit(0)\n", first_token);
     }
  
     thread_exit();

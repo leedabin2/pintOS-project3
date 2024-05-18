@@ -65,15 +65,18 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
         /* TODO: Insert the page into the spt. */
         struct page *new_page = (struct page *)malloc(sizeof(struct page));
         bool (*initializer)(struct page *, enum vm_type, void *) ;
+        new_page->full_type = type;
+
         switch (VM_TYPE(type))
         {
             case VM_ANON:
-                uninit_new(new_page, upage, init, VM_ANON, aux, anon_initializer);
+                uninit_new(new_page, upage, init, type, aux, anon_initializer);
                 break;
             case VM_FILE:
-                uninit_new(new_page, upage, init, VM_FILE, aux, file_backed_initializer);
+                uninit_new(new_page, upage, init, type, aux, file_backed_initializer);
                 break;
         }
+        new_page->writable = writable; // 추가
         bool ok = spt_insert_page(&thread_current()->spt, new_page);
 
         struct page *result = spt_find_page(&thread_current()->spt, upage);
@@ -188,7 +191,12 @@ static bool vm_handle_wp(struct page *page UNUSED) {
 /* Return true on success */
 bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
     struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
-    struct page *page = NULL;
+
+    struct page * page = spt_find_page(spt,addr);
+    if (page == NULL){
+        return false;
+    }
+    // struct page *page = NULL;
 
     // 유저 프로세스가 접근하려던 주소에서 데이터를 얻을 수 없거나, 페이지가 커널 가상 메모리 영역에 존재하거나, 읽기 전용 페이지에 대해 쓰기를 시도하는 상황 
     // 프로세스를 종료시키고 프로세스의 모든 자원을 해제합니다.
@@ -241,7 +249,7 @@ static bool vm_do_claim_page(struct page *page) {
     // 가상주소와 물리주소를 매핑한 정보를 페이지 테이블에 추가
     // 성공하면 true, 실패하면 false 
     if (frame->page != NULL) {
-        if (!pml4_set_page(curr->pml4,page->va,frame->kva,NULL))
+        if (!pml4_set_page(curr->pml4,page->va,frame->kva,page->writable))
             return false;
     }
 

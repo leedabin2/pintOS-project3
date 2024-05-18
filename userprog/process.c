@@ -873,9 +873,17 @@ static bool lazy_load_segment(struct page *page, void *aux) {
     /* TODO: VA is available when calling this function. */
 
     struct aux * data = (struct aux *) aux;
-    file_read(data->file, page->va, data->page_read_bytes);
+    uint32_t page_read_bytes = data->page_read_bytes;
+    uint32_t page_zero_bytes = data->page_zero_bytes;
+    off_t ofs = data->ofs;
+    struct file * file = data->file;
+
+    file_seek(file, ofs); // 왜 해야하는지 모르겠음
+
+    file_read(file, page->va, page_read_bytes) != (int)page_read_bytes;
 
     free(data);
+    // memset(page->va + page_read_bytes, 0, page_zero_bytes);
     return true;
 }
 
@@ -912,6 +920,8 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage, uint32_t 
         aux->file = file;
         aux->ofs = ofs;
         aux->page_read_bytes = page_read_bytes;
+        aux->writable = writable;
+        aux->page_zero_bytes = page_zero_bytes;
 
         if (!vm_alloc_page_with_initializer(VM_ANON, upage, writable, lazy_load_segment, aux))
             return false;

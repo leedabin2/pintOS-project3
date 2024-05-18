@@ -59,6 +59,8 @@ struct page {
 
 	/* 여러분의 구현 */
 	/* Your implementation */
+	bool writable ;
+	enum vm_type full_type;
 	struct hash_elem spt_entry;
 
 	/* 각 유형의 데이터가 union에 바인딩됩니다.

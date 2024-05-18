@@ -13,7 +13,8 @@ void process_activate (struct thread *next);
 struct aux {
 	struct file *file ;
 	off_t ofs; 
-	// bool writable;
+	bool writable;
+	uint32_t page_zero_bytes;
 	uint32_t page_read_bytes;
 };
 
