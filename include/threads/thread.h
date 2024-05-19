@@ -1,6 +1,6 @@
 #ifndef THREADS_THREAD_H
 #define THREADS_THREAD_H
-#define USERPROG
+// #define USERPROG
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
@@ -145,7 +145,8 @@ struct thread {
 	enum thread_status status;          /* 스레드 상태. *//* Thread state. */
 	char name[16];                      /* 디버깅 목적의 이름. *//* Name (for debugging purposes). */
 	int priority;                       /* 우선순위. *//* Priority. */
-
+	uint64_t rsp;
+	
 	// 스레드가 현재 얻기 위해서 기다리고 있는 LOCK
 	int init_priority;
 	

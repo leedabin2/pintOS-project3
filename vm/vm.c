@@ -65,17 +65,19 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
         /* TODO: Insert the page into the spt. */
         struct page *new_page = (struct page *)malloc(sizeof(struct page));
         bool (*initializer)(struct page *, enum vm_type, void *) ;
-        new_page->full_type = type;
+        // new_page->full_type = type;
 
         switch (VM_TYPE(type))
         {
             case VM_ANON:
-                uninit_new(new_page, upage, init, type, aux, anon_initializer);
+                initializer = anon_initializer;
                 break;
             case VM_FILE:
-                uninit_new(new_page, upage, init, type, aux, file_backed_initializer);
+                initializer = file_backed_initializer;
                 break;
-        }
+        } 
+        uninit_new(new_page, upage, init, type, aux, initializer);
+
         new_page->writable = writable; // 추가
         bool ok = spt_insert_page(&thread_current()->spt, new_page);
 
@@ -252,7 +254,7 @@ static bool vm_do_claim_page(struct page *page) {
         if (!pml4_set_page(curr->pml4,page->va,frame->kva,page->writable))
             return false;
     }
-
+ 
     return swap_in(page, frame->kva);
 }
 

@@ -300,21 +300,22 @@ int process_exec(void *f_name) {
     /* And then load the binary */
     success = load(fn_copy, &_if);
 
-    if (!success)
+    if (!success) {
+        /* 로드에 실패하면 종료합니다. */
+        /* If load failed, quit. */
+        palloc_free_page(fn_copy);
         return -1;
-        
+    }
+
     argument_stack(parse, count, &_if);  // 프로그램 이름과 인자가 저장되어 있는 메모리 공간, count: 인자의 개수, rsp: 스택 포인터를 가리키는 주소
     // hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
-
-    /* 로드에 실패하면 종료합니다. */
-    /* If load failed, quit. */
-    palloc_free_page(fn_copy);
-
+    
     /* 전환된 프로세스를 시작합니다. */
     /* Start switched process. */
     do_iret(&_if);
     NOT_REACHED();
 }
+
 
 void argument_stack(char **parse, int count, struct intr_frame *tf) {
     int total = 0;
@@ -586,7 +587,7 @@ static bool load(const char *file_name, struct intr_frame *if_) {
         printf("load: %s: open failed\n", file_name);
         goto done;
     }
-    t -> running = file_reopen(file);
+    t -> running = file;
     file_deny_write(t->running);
     lock_release(&filesys_lock);
 
@@ -673,7 +674,6 @@ static bool load(const char *file_name, struct intr_frame *if_) {
 done:
     /* 로드가 성공했든 실패했든 여기에 도착합니다. */
     /* We arrive here whether the load is successful or not. */
-    file_close(file);
     return success;
 }
 
@@ -880,10 +880,10 @@ static bool lazy_load_segment(struct page *page, void *aux) {
 
     file_seek(file, ofs); // 왜 해야하는지 모르겠음
 
-    file_read(file, page->va, page_read_bytes) != (int)page_read_bytes;
-
-    free(data);
-    // memset(page->va + page_read_bytes, 0, page_zero_bytes);
+    if (file_read(file, page->frame->kva, page_read_bytes) != (int)page_read_bytes)
+        return false;
+    // free(data);
+    memset(page->va + page_read_bytes, 0, page_zero_bytes);
     return true;
 }
 

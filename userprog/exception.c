@@ -193,13 +193,16 @@ page_fault (struct intr_frame *f) {
 	/* For project 3 and later. */
 	if (vm_try_handle_fault (f, fault_addr, user, write, not_present))
 		return;	
+
 #endif
+	
+	if ( fault_addr == NULL || !is_user_vaddr(fault_addr))
+		exit(-1);
+	
 	/* 페이지 폴트 횟수를 셉니다. */
 	/* Count page faults. */
 	page_fault_cnt++;
 
-	exit(-1);
-	
 	/* 폴트가 진짜 폴트인 경우 정보를 표시하고 종료합니다. */
 	/* If the fault is true fault, show info and exit. */
 	printf ("Page fault at %p: %s error %s page in %s context.\n",
