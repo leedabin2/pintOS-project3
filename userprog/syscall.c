@@ -85,6 +85,8 @@ void syscall_handler(struct intr_frame *f UNUSED) {
 
     int sys_num = f->R.rax;
 
+    thread_current()->rsp = f->rsp; // 커널 작업 실행중이므로 현재 rsp는 커널 가리킴 따라서 인터럽트 프레임안의 rsp로 보정해줘야함
+
     switch (sys_num) {
         case SYS_HALT:
             halt();

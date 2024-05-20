@@ -145,7 +145,6 @@ struct thread {
 	enum thread_status status;          /* 스레드 상태. *//* Thread state. */
 	char name[16];                      /* 디버깅 목적의 이름. *//* Name (for debugging purposes). */
 	int priority;                       /* 우선순위. *//* Priority. */
-	uint64_t rsp;
 	
 	// 스레드가 현재 얻기 위해서 기다리고 있는 LOCK
 	int init_priority;
@@ -182,6 +181,7 @@ struct thread {
 	/* 스레드가 소유한 전체 가상 메모리에 대한 테이블. */
 	/* Table for whole virtual memory owned by thread. */
 	struct supplemental_page_table spt;
+	void * rsp;
 #endif
 
 	/* Owned by thread.c. */

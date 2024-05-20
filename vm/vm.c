@@ -186,6 +186,7 @@ static struct frame *vm_get_frame(void) {
 
 /* Growing the stack. */
 static void vm_stack_growth(void *addr UNUSED) {
+    vm_alloc_page(VM_ANON|VM_MARKER_0, pg_round_down(addr), 1);
 }
 
 /* Handle the fault on write_protected page */
@@ -193,28 +194,80 @@ static bool vm_handle_wp(struct page *page UNUSED) {
 }
 
 /* Return true on success */
-bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
+// bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
+//     struct supplemental_page_table *spt UNUSED = &thread_current()->spt; // 현재 실행중인 스레드의 spt
+    
+//     uint64_t MAX_stack = USER_STACK - (1>>20); // 최대 스택 범위
+//     uint64_t rsp = user ? f->rsp : thread_current()->rsp; // 여기서 user : 참 -> user 접근 , 거짓 -> kernel 접근
+
+//     /* 1. 주소값이 커널 가상 메모리 영역에 존재하는 경우 */
+//     if  (is_kernel_vaddr(addr)){
+//         return false;
+//     }
+
+//     /* 2. 읽기 전용 페이지에 대해 쓰기를 시도하는 상황 */
+// 	    if ((!not_present) && write){
+//     	return false;}
+
+//     /* 3. 접근하려던 주소에서 데이터를 얻을 수 없는 경우 */
+//     struct page * page = spt_find_page(spt,pg_round_down(addr)); // spt에서 addr 에 해당하는 page를 찾는다
+//     if (page == NULL){
+//         if (MAX_stack < addr < USER_STACK && addr > rsp - 8 ){ // 해당 주소값이 스택영역에 있고, rsp 기준 8바이트 아래까지 범위 내에 주소값이 존재한다면 stack_growth 진행
+//             vm_stack_growth(pg_round_down(addr));              // stack_bottom 값을 기준으로 4kb의 페이지 할당
+//             page = spt_find_page(spt, pg_round_down(addr));
+//         }
+//         else {
+//             return false;
+//         }
+//     }
+//     // struct page *page = NULL;
+
+//     // 유저 프로세스가 접근하려던 주소에서 데이터를 얻을 수 없거나, 페이지가 커널 가상 메모리 영역에 존재하거나, 읽기 전용 페이지에 대해 쓰기를 시도하는 상황 
+//     // 프로세스를 종료시키고 프로세스의 모든 자원을 해제합니다.
+//     /* TODO: Validate the fault */
+//     /* TODO: Your code goes here */
+//     // 유효한 페이지 폴트인지 검사
+//     // 유효한 페이지 폴트라면 (위와 같은 상황) 에러 처리 
+//     // 그렇지 않다면, bogus 폴트 (일단 , 지연 로딩의 경우)
+//     // 콘텐츠를 로드
+//     // bogus 폴트의 case - 지연 로딩 페이지 , 스왑 아웃 페이지, 쓰기 보호페이지 (extra)
+//     // 지연 로딩 페이지의 경우 - vm_alloc_page_with_initializer 함수에서 세팅해 놓은 초기화 함수를 호출
+//     // process.c 의 lazy_load_segment 함수 구현해야 함
+
+//     return vm_do_claim_page(page);
+// }
+bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
+                         bool user UNUSED, bool write UNUSED, bool not_present UNUSED)
+{
     struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
-
-    struct page * page = spt_find_page(spt,addr);
-    if (page == NULL){
+    struct page *page = NULL;
+    if (addr == NULL)
         return false;
-    }
-    // struct page *page = NULL;
 
-    // 유저 프로세스가 접근하려던 주소에서 데이터를 얻을 수 없거나, 페이지가 커널 가상 메모리 영역에 존재하거나, 읽기 전용 페이지에 대해 쓰기를 시도하는 상황 
-    // 프로세스를 종료시키고 프로세스의 모든 자원을 해제합니다.
-    /* TODO: Validate the fault */
-    /* TODO: Your code goes here */
-    // 유효한 페이지 폴트인지 검사
-    // 유효한 페이지 폴트라면 (위와 같은 상황) 에러 처리 
-    // 그렇지 않다면, bogus 폴트 (일단 , 지연 로딩의 경우)
-    // 콘텐츠를 로드
-    // bogus 폴트의 case - 지연 로딩 페이지 , 스왑 아웃 페이지, 쓰기 보호페이지 (extra)
-    // 지연 로딩 페이지의 경우 - vm_alloc_page_with_initializer 함수에서 세팅해 놓은 초기화 함수를 호출
-    // process.c 의 lazy_load_segment 함수 구현해야 함
-    return vm_do_claim_page(page);
+    if (is_kernel_vaddr(addr))
+        return false;
+
+    if (not_present) // 접근한 메모리가 frmae과 매핑되지 않은경우
+    {
+        void *rsp = f->rsp; // user access인 경우 rsp는 유저 stack을 가리킨다.
+        if (!user)          // kernel access인 경우 thread에서 rsp를 가져와야 한다. -> why? syscall에 진입할때 intr_frame에서 rsp 값 가져옴
+            rsp = thread_current()->rsp;
+
+        if (USER_STACK - (1 << 20) <= rsp - 8 && rsp - 8 == addr && addr <= USER_STACK)
+            vm_stack_growth(addr);
+        else if (USER_STACK - (1 << 20) <= rsp && rsp <= addr && addr <= USER_STACK)
+            vm_stack_growth(addr);
+
+        page = spt_find_page(spt, addr);
+        if (page == NULL)
+            return false;
+        if (write == 1 && page->writable == 0) // write 불가능한 페이지에 write 요청한 경우
+            return false;
+        return vm_do_claim_page(page);
+    }
+    return false;
 }
+
 
 /* Free the page.
  * DO NOT MODIFY THIS FUNCTION. */
