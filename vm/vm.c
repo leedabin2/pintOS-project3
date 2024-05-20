@@ -8,6 +8,8 @@
 
 #include "threads/vaddr.h"
 #include "lib/kernel/hash.h"
+
+#include "userprog/process.h"
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
 
@@ -61,12 +63,12 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
         /* TODO: Create the page, fetch the initialier according to the VM type,
          * TODO: and then create "uninit" page struct by calling uninit_new. You
          * TODO: should modify the field after calling the uninit_new. */
-
         /* TODO: Insert the page into the spt. */
+        
         struct page *new_page = (struct page *)malloc(sizeof(struct page));
         bool (*initializer)(struct page *, enum vm_type, void *) ;
         // new_page->full_type = type;
-
+     
         switch (VM_TYPE(type))
         {
             case VM_ANON:
@@ -266,6 +268,34 @@ void supplemental_page_table_init(struct supplemental_page_table *spt UNUSED) {
 
 /* Copy supplemental page table from src to dst */
 bool supplemental_page_table_copy(struct supplemental_page_table *dst UNUSED, struct supplemental_page_table *src UNUSED) {
+
+    struct hash_iterator i; // 일종의 배열의 요소를 가리키는 포인터로 생각하자!
+    hash_first(&i, &src->spt_hash);
+    while(hash_next(&i)){
+        struct page *p = hash_entry(hash_cur(&i), struct page, spt_entry); // hash_cur() : return 값은 hash_elem
+        enum vm_type type = p->operations->type;
+        void * va = p->va;
+        bool writable = p->writable;
+        
+        if (type == VM_UNINIT){ // 초기화 되지 않은 페이지
+            vm_initializer *init = p->uninit.init;
+            void * aux = p->uninit.aux;
+            if (!vm_alloc_page_with_initializer(VM_ANON, va, writable, init, aux)){
+                return false;
+            }
+        }
+        else {// 이미 초기화된 페이지 => 1. 페이지 초기화 되서 할당되어야함 2. 물리 프레임 매핑 되어야함
+            if(!vm_alloc_page(VM_ANON, va, writable)){ 
+                return false;
+            }
+            if(!vm_claim_page(va)){
+                return false;
+            }
+            struct page *dst_page = spt_find_page(dst,va);
+            memcpy(dst_page->frame->kva, p->frame->kva, PGSIZE); // 물리 메모리에 내용 복사
+        }
+    }
+    return true;
 }
 
 /* Free the resource hold by the supplemental page table */
@@ -274,6 +304,8 @@ void supplemental_page_table_kill(struct supplemental_page_table *spt UNUSED) {
      * TODO: writeback all the modified contents to the storage. */
     /* TODO: 스레드가 보유한 모든 추가 페이지 테이블을 파괴하고, */
     /* TODO: 수정된 모든 내용을 저장소에 다시 쓰세요. */
+    
+    hash_clear(&spt->spt_hash, clear_function);
 }
 
 /* hash_elem을 사용하여 page->va 정보를 불러와 해쉬값 반환 */

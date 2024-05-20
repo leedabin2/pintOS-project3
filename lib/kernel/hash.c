@@ -8,6 +8,7 @@
 #include "hash.h"
 #include "../debug.h"
 #include "threads/malloc.h"
+#include "vm/vm.h"
 
 #define list_elem_to_hash_elem(LIST_ELEM) \
 	list_entry(LIST_ELEM, struct hash_elem, list_elem)
@@ -500,4 +501,12 @@ remove_elem(struct hash *h, struct hash_elem *e)
 {
 	h->elem_cnt--;
 	list_remove(&e->list_elem);
+}
+
+
+
+/* hash 삭제 관련 */
+void clear_function(struct hash_elem * elem, void * aux){
+	struct page *page = hash_entry(elem, struct page, spt_entry);
+	vm_dealloc_page(page);
 }
