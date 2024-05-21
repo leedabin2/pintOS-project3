@@ -884,7 +884,7 @@ static bool lazy_load_segment(struct page *page, void *aux) {
     
     // page 물리 메모리가 있는 해당 주소에서 page_read_bytes 만큼 떨어진 지점 부터 page_zero_bytes 만큼의 메모리 영역을 0으로 초기화
     memset(page->frame->kva + page_read_bytes, 0, page_zero_bytes); 
-    free(data);
+    // free(data);
     return true;
 }
 
