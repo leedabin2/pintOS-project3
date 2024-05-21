@@ -74,6 +74,7 @@ typedef bool hash_less_func (const struct hash_elem *a,
  * data AUX. */
 /* 보조 데이터 AUX가 주어진 해시 요소 E에 대해 어떤 작업을 수행합니다. */
 typedef void hash_action_func (struct hash_elem *e, void *aux);
+void clear_action_func (struct hash_elem *e, void *aux);
 
 /* Hash table. */
 struct hash {

@@ -140,4 +140,6 @@ unsigned page_hash(struct hash_elem *p_, void *aux UNUSED);
 bool page_less(struct hash_elem *a, struct hash_elem *b, void *aux);
 bool page_insert(struct hash *h, struct page *page);
 bool page_delete(struct hash *h, struct page *page); 
+
+void clear_action_func (struct hash_elem *e, void *aux);
 #endif  /* VM_VM_H */
