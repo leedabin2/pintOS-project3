@@ -258,6 +258,37 @@ void supplemental_page_table_init(struct supplemental_page_table *spt UNUSED) {
 
 /* Copy supplemental page table from src to dst */
 bool supplemental_page_table_copy(struct supplemental_page_table *dst UNUSED, struct supplemental_page_table *src UNUSED) {
+    // src 부터 dst 까지 보조 페이지 테이블 복사
+    // src 의 보조 페이지 테이블을 반복하면서, 목적지 보조 테이블의 엔트리의 정확한 복사본을 만들기
+
+    struct hash_iterator i; 
+
+	hash_first(&i, &src->spt_hash);
+	while (hash_next(&i))
+	{
+        struct page *page = hash_entry(hash_cur(&i), struct page, spt_entry); // 해당 페이지들을 가져와서, 목적지 보조 테이블의 엔트리에 복사본 삽입 ? 
+
+        // 매핑됐냐 안 됐냐로 판단
+        // 부모가 매핑이 안 됐으면, 즉 uninit이면 그 페이지를 그대로 spt에 복사해준다.
+        // 부모가 매핑 됐으면 즉, uninit 이 아니면 페이지를 할당해주고, 즉시 매핑
+       
+        if (page->operations->type == VM_UNINIT) // 부모가 매핑이 안 됐으면, 즉 uninit이면 그 페이지를 그대로 spt에 복사해준다.
+        {   
+            bool ok = vm_alloc_page_with_initializer(VM_ANON, page->va,page->writable, page->uninit.init, page->uninit.aux); // 페이지 생성후 보조 페이지 테이블에 넣기까지 성공
+            if (!ok)
+                return false;
+            
+        } else 
+        {   
+            bool ok = vm_alloc_page_with_initializer(VM_ANON, page->va,page->writable, page->uninit.init, page->uninit.aux);
+            if (!ok)
+                return false;
+            struct page *child_page = spt_find_page(dst, page->va);
+            vm_do_claim_page(child_page);
+            memcpy(child_page->frame->kva, page->frame->kva, PGSIZE);
+        }
+	}
+    return true;
 }
 
 /* Free the resource hold by the supplemental page table */
@@ -266,7 +297,16 @@ void supplemental_page_table_kill(struct supplemental_page_table *spt UNUSED) {
      * TODO: writeback all the modified contents to the storage. */
     /* TODO: 스레드가 보유한 모든 추가 페이지 테이블을 파괴하고, */
     /* TODO: 수정된 모든 내용을 저장소에 다시 쓰세요. */
+
+    // 보조 페이지에 의해 유지되던 모든 자원 free 
+    // process_exit 할 때 호출 , 페이지 엔트리 반복하면서 페이지에 destroy 
+    
+    // hash_clear(&spt->spt_hash, spt->spt_hash.aux);
+
 }
+
+/* 보조 데이터 AUX가 주어진 해시 요소 E에 대해 어떤 작업을 수행합니다. */
+void hash_action_func (struct hash_elem *e, void *aux);
 
 /* hash_elem을 사용하여 page->va 정보를 불러와 해쉬값 반환 */
 unsigned page_hash(struct hash_elem *p_, void *aux UNUSED){
