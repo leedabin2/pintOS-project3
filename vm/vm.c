@@ -272,7 +272,7 @@ bool supplemental_page_table_copy(struct supplemental_page_table *dst UNUSED, st
         // 부모가 매핑이 안 됐으면, 즉 uninit이면 그 페이지를 그대로 spt에 복사해준다.
         // 부모가 매핑 됐으면 즉, uninit 이 아니면 페이지를 할당해주고, 즉시 매핑
        
-        if (page->operations->type == VM_UNINIT) // 부모가 매핑이 안 됐으면, 즉 uninit이면 그 페이지를 그대로 spt에 복사해준다.
+        if (page->operations->type == VM_TYPE(VM_UNINIT)) // 부모가 매핑이 안 됐으면, 즉 uninit이면 그 페이지를 그대로 spt에 복사해준다.
         {   
             bool ok = vm_alloc_page_with_initializer(VM_ANON, page->va,page->writable, page->uninit.init, page->uninit.aux); // 페이지 생성후 보조 페이지 테이블에 넣기까지 성공
             if (!ok)
@@ -280,7 +280,7 @@ bool supplemental_page_table_copy(struct supplemental_page_table *dst UNUSED, st
             
         } else 
         {   
-            bool ok = vm_alloc_page_with_initializer(VM_ANON, page->va,page->writable, page->uninit.init, page->uninit.aux);
+            bool ok = vm_alloc_page(VM_ANON, page->va, page->writable);
             if (!ok)
                 return false;
             struct page *child_page = spt_find_page(dst, page->va);
@@ -301,12 +301,9 @@ void supplemental_page_table_kill(struct supplemental_page_table *spt UNUSED) {
     // 보조 페이지에 의해 유지되던 모든 자원 free 
     // process_exit 할 때 호출 , 페이지 엔트리 반복하면서 페이지에 destroy 
     
-    // hash_clear(&spt->spt_hash, spt->spt_hash.aux);
+    hash_clear(spt, clear_action_func);
 
 }
-
-/* 보조 데이터 AUX가 주어진 해시 요소 E에 대해 어떤 작업을 수행합니다. */
-void hash_action_func (struct hash_elem *e, void *aux);
 
 /* hash_elem을 사용하여 page->va 정보를 불러와 해쉬값 반환 */
 unsigned page_hash(struct hash_elem *p_, void *aux UNUSED){
