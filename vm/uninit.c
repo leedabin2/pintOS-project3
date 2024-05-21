@@ -48,7 +48,7 @@ uninit_initialize (struct page *page, void *kva) {
 	struct uninit_page *uninit = &page->uninit;
 
 	/* Fetch first, page_initialize may overwrite the values */
-	vm_initializer *init = uninit->init;
+	vm_initializer *init = uninit->init; // 여기에 lazy_load_segment 가 들어감 -> aux 를 사용해서 세그먼트를 메모리에서 읽어오기 위함 (파일에서 세그먼트를 로드)
 	void *aux = uninit->aux;
 
 	/* TODO: You may need to fix this function. */

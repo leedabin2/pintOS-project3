@@ -55,6 +55,8 @@
     "system_error": "c",
     "utility": "c",
     "typeinfo": "c",
-    "malloc.h": "c"
+    "malloc.h": "c",
+    "chrono": "c",
+    "ratio": "c"
   }
 }

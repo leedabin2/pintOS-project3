@@ -58,11 +58,6 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
 
     /* Check wheter the upage is already occupied or not. */
     if (spt_find_page(spt, upage) == NULL) {
-        /* TODO: Create the page, fetch the initialier according to the VM type,
-         * TODO: and then create "uninit" page struct by calling uninit_new. You
-         * TODO: should modify the field after calling the uninit_new. */
-
-        /* TODO: Insert the page into the spt. */
         struct page *new_page = (struct page *)malloc(sizeof(struct page));
         bool (*initializer)(struct page *, enum vm_type, void *) ;
         // new_page->full_type = type;
@@ -172,7 +167,7 @@ static struct frame *vm_get_frame(void) {
     if (kva == NULL) 
         PANIC("todo : swap out 구현해야함.");
     
-    struct frame *frame = (struct frame *)malloc(sizeof(struct frame)); // frame table을 위한 메모리 할당
+    struct frame *frame = (struct frame *)malloc(sizeof(struct frame));
     // 구조체 멤버 초기화
     frame->kva = kva; 
     frame->page = NULL;
@@ -198,14 +193,11 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool us
     if (page == NULL){
         return false;
     }
-    // struct page *page = NULL;
 
     // 유저 프로세스가 접근하려던 주소에서 데이터를 얻을 수 없거나, 페이지가 커널 가상 메모리 영역에 존재하거나, 읽기 전용 페이지에 대해 쓰기를 시도하는 상황 
     // 프로세스를 종료시키고 프로세스의 모든 자원을 해제합니다.
     /* TODO: Validate the fault */
     /* TODO: Your code goes here */
-    // 유효한 페이지 폴트인지 검사
-    // 유효한 페이지 폴트라면 (위와 같은 상황) 에러 처리 
     // 그렇지 않다면, bogus 폴트 (일단 , 지연 로딩의 경우)
     // 콘텐츠를 로드
     // bogus 폴트의 case - 지연 로딩 페이지 , 스왑 아웃 페이지, 쓰기 보호페이지 (extra)
@@ -248,14 +240,14 @@ static bool vm_do_claim_page(struct page *page) {
     page->frame = frame;
 
     /* TODO: Insert page table entry to map page's VA to frame's PA. */
-    // 가상주소와 물리주소를 매핑한 정보를 페이지 테이블에 추가
+    // 가상주소와 물리주소를 매핑한 정보를 진짜 페이지 테이블인 pml4에 추가
     // 성공하면 true, 실패하면 false 
     if (frame->page != NULL) {
         if (!pml4_set_page(curr->pml4,page->va,frame->kva,page->writable))
             return false;
     }
  
-    return swap_in(page, frame->kva);
+    return swap_in(page, frame->kva); // 물리 메모리에 페이지를 올리는 과정 (데이터는 안 올라감 ? )
 }
 
 /* Initialize new supplemental page table */

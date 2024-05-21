@@ -878,12 +878,13 @@ static bool lazy_load_segment(struct page *page, void *aux) {
     off_t ofs = data->ofs;
     struct file * file = data->file;
 
-    file_seek(file, ofs); // 왜 해야하는지 모르겠음
-
-    if (file_read(file, page->frame->kva, page_read_bytes) != (int)page_read_bytes)
+    file_seek(file, ofs);
+    if (file_read(file, page->frame->kva, page_read_bytes) != (int)page_read_bytes) // 디스크에서 데이터를 읽어, 물리 프레임에 복사(파일에서 읽을 바이트만큼 읽어서 물리 프레임 주소로 복사)
         return false;
-    // free(data);
-    memset(page->va + page_read_bytes, 0, page_zero_bytes);
+    
+    // page 물리 메모리가 있는 해당 주소에서 page_read_bytes 만큼 떨어진 지점 부터 page_zero_bytes 만큼의 메모리 영역을 0으로 초기화
+    memset(page->frame->kva + page_read_bytes, 0, page_zero_bytes); 
+    free(data);
     return true;
 }
 
@@ -939,7 +940,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage, uint32_t 
 /* Create a PAGE of stack at the USER_STACK. Return true on success. */
 static bool setup_stack(struct intr_frame *if_) {
     bool success = false;
-    void *stack_bottom = (void *)(((uint8_t *)USER_STACK) - PGSIZE);
+    void *stack_bottom = (void *)(((uint8_t *)USER_STACK) - PGSIZE); 
 
     /* TODO: Map the stack on stack_bottom and claim the page immediately.
      * TODO: If success, set the rsp accordingly.
@@ -951,6 +952,10 @@ static bool setup_stack(struct intr_frame *if_) {
      * TODO: 페이지가 스택임을 표시해야 합니다. */
     /* TODO: 여기에 여러분의 코드를 작성하세요 */
     
+    // 페이지 폴트가 발생하는 것을 기다릴 필요 없이 스택 페이지를 load time 의 커맨드 라인의 인자들과 할당하고 초기화 함
+    // why? setup_stack 이 끝나고 argument_passing 이 이루어질 때 스택 영역에 argument를 넣을 때, 여기서 어차피 Page fault 가 발생하기 때문에
+    // Physical memory를 할당하므로 setup_stack에서 바로 Physical memory를 할당해도 됨
+
     if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)){
 		success = vm_claim_page (stack_bottom) ;// 페이지 할당 성공시 물리 프레임 생성 후 매핑 
 		if (success){
