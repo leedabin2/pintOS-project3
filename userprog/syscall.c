@@ -84,10 +84,11 @@ syscall_init (void) {
 void syscall_handler(struct intr_frame *f UNUSED) {
 
     int sys_num = f->R.rax;
-
+    // for project3, 예외 발생시 유저모드의 rsp를 커널모드로 전환하기 전에 현재스레드의 rsp에 저장하기 위함
+    thread_current()->rsp = f->rsp; 
     switch (sys_num) {
         case SYS_HALT:
-            halt();
+            halt(); 
             break;
         case SYS_WRITE:
             f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);

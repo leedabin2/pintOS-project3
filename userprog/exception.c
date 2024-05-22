@@ -196,7 +196,7 @@ page_fault (struct intr_frame *f) {
 
 #endif
 	
-	if ( fault_addr == NULL || !is_user_vaddr(fault_addr))
+	// if ( fault_addr == NULL || !is_user_vaddr(fault_addr))
 		exit(-1);
 	
 	/* 페이지 폴트 횟수를 셉니다. */

@@ -10,7 +10,7 @@
 #include "lib/kernel/hash.h"
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
-
+#include <stdlib.h>
 /* 가상 메모리 서브시스템을 각 서브시스템의 초기화 코드를 호출함으로써 초기화합니다. */
 
 void vm_init(void) {
@@ -55,7 +55,7 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
     ASSERT(VM_TYPE(type) != VM_UNINIT)
 
     struct supplemental_page_table *spt = &thread_current()->spt;
-
+    
     /* Check wheter the upage is already occupied or not. */
     if (spt_find_page(spt, upage) == NULL) {
         struct page *new_page = (struct page *)malloc(sizeof(struct page));
@@ -72,7 +72,7 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
                 break;
         } 
         uninit_new(new_page, upage, init, type, aux, initializer);
-
+    
         new_page->writable = writable; // 추가
         bool ok = spt_insert_page(&thread_current()->spt, new_page);
 
@@ -179,6 +179,9 @@ static struct frame *vm_get_frame(void) {
 
 /* Growing the stack. */
 static void vm_stack_growth(void *addr UNUSED) {
+    // anon 페이지를 할당해서 스택 크기 증가
+    vm_alloc_page(VM_ANON|VM_MARKER_0, pg_round_down(addr), 1);
+    // 페이지를 할당할 때는 주소를 PGSIZE 기준으로 내림 
 }
 
 /* Handle the fault on write_protected page */
@@ -189,11 +192,29 @@ static bool vm_handle_wp(struct page *page UNUSED) {
 bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
     struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
 
-    struct page * page = spt_find_page(spt,addr);
-    if (page == NULL){
+    if (addr == NULL || !is_user_vaddr(addr)) // 사용자 주소가 아닌 경우 
         return false;
+
+    void *rsp = f->rsp; 
+    if (!user) { // ex) syscall 의 커널모드에서 페이지 폴트가 나서 , user stack을 증가시켜야 할 때, 
+        void *rsp = thread_current()->rsp; // syscall에서 커널모드로 전환하기 전에 저장한 user모드의 rsp를 가져옴
     }
 
+    if (not_present)
+    {
+        if (addr >= rsp - 8 && rsp - 8 >= USER_STACK - (1<<20) && addr <= USER_STACK ) {
+            vm_stack_growth(addr);
+        } 
+        if (addr >= rsp && rsp >= USER_STACK - (1<<20) && addr <= USER_STACK) {
+            vm_stack_growth(addr); 
+        }
+        struct page * page = spt_find_page(spt,addr);
+        if (page == NULL){ // 찐 폴트는 걍 죽음
+            return false;
+        }
+        return vm_do_claim_page(page);
+    }
+    
     // 유저 프로세스가 접근하려던 주소에서 데이터를 얻을 수 없거나, 페이지가 커널 가상 메모리 영역에 존재하거나, 읽기 전용 페이지에 대해 쓰기를 시도하는 상황 
     // 프로세스를 종료시키고 프로세스의 모든 자원을 해제합니다.
     /* TODO: Validate the fault */
@@ -203,7 +224,7 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool us
     // bogus 폴트의 case - 지연 로딩 페이지 , 스왑 아웃 페이지, 쓰기 보호페이지 (extra)
     // 지연 로딩 페이지의 경우 - vm_alloc_page_with_initializer 함수에서 세팅해 놓은 초기화 함수를 호출
     // process.c 의 lazy_load_segment 함수 구현해야 함
-    return vm_do_claim_page(page);
+    return false;
 }
 
 /* Free the page.
