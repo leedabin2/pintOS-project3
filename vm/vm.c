@@ -191,16 +191,19 @@ static bool vm_handle_wp(struct page *page UNUSED) {
 /* Return true on success */
 bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
     struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
+    //write: page fault를 일으킨 명령어가 write일 경우
 
     if (addr == NULL || !is_user_vaddr(addr)) // 사용자 주소가 아닌 경우 
         return false;
 
+    // struct intr_frame *user_if = pg_round_up(thread_current() + 1) - sizeof(struct intr_frame);
+	// void *rsp = user_if->rsp;
     void *rsp = f->rsp; 
     if (!user) { // ex) syscall 의 커널모드에서 페이지 폴트가 나서 , user stack을 증가시켜야 할 때, 
         void *rsp = thread_current()->rsp; // syscall에서 커널모드로 전환하기 전에 저장한 user모드의 rsp를 가져옴
     }
 
-    if (not_present)
+    if (not_present) // 접근한 메모리의 physical page가 존재하지 않은 경우
     {
         if (addr >= rsp - 8 && rsp - 8 >= USER_STACK - (1<<20) && addr <= USER_STACK ) {
             vm_stack_growth(addr);

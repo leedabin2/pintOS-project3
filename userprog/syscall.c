@@ -35,6 +35,7 @@ unsigned tell(int fd);
 void close (int fd);
 int wait (pid_t pid);
 int exec(const char *cmd_line);
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset);
 
 /* 시스템 호출.
  *
@@ -128,6 +129,10 @@ void syscall_handler(struct intr_frame *f UNUSED) {
             break;
         case SYS_CLOSE:
             close(f->R.rdi);
+            break;
+        /* for project 3 */
+        case SYS_MMAP:
+            mmap(f->R.rdi,f->R.rsi,f->R.rdx,f->R.r10, f->R.r8);
             break;
         default:
             thread_exit();
@@ -300,7 +305,7 @@ int read(int fd, void *buffer, unsigned size) {
 
     // filesys_lock 선언(syscall.h에 만들기)
     // syscall_init에도 lock 초기화함수 lock_init을 선언  
-    lock_acquire(&filesys_lock);
+    lock_acquire(&filesys_lock); 
     // 그 외는 파일 객체 찾고, size 바이트 크기 만큼 파일을 읽어서 버퍼에 넣어준다.
     off_t read_count = file_read (file, buffer, size);
     lock_release(&filesys_lock);
@@ -372,4 +377,19 @@ int exec (const char *cmd_line) {
         exit(-1);
     }
     return result;
+}
+
+/* for project3 memory */
+
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
+    // fd로 열린 파일의 오프셋 바이트부터 length 바이트 만큼을 프로세스의 가상주소공간에 매핑
+    check_address(addr);
+	struct file *file = fd_to_fileptr(fd); /* fd로 file을 열고*/
+
+    struct page *page = spt_find_page(&thread_current()->spt,addr); // 기존 매핑된 페이지가 있는지
+
+    if (length <= 0 || fd == 0 || fd == 1 || fd == 2 || (offset % PGSIZE) != 0 || addr == NULL || page )  // 매핑을 실패하는 조건
+        return false; 
+
+    do_mmap(addr, length, writable, file, offset); // 매핑 정보를 전달 
 }
