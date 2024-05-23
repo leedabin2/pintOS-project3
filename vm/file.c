@@ -70,7 +70,7 @@ void *do_mmap(void *addr, size_t length, int writable, struct file *file, off_t 
 
         if (!vm_alloc_page_with_initializer(VM_FILE, addr, writable, lazy_load_segment, aux))
             return false;
-
+        
         read_bytes -= page_read_bytes;
         zero_bytes -= page_zero_bytes;
         addr += PGSIZE;
@@ -81,5 +81,7 @@ void *do_mmap(void *addr, size_t length, int writable, struct file *file, off_t 
 
 /* Do the munmap */
 void do_munmap(void *addr) {
-
+    // 매핑이 해제되면, 모든 변경사항(pml4 is drity)함수를 통해서 파일에 반영(file_write_at)후 페이지 목록에서 삭제
+    // 파일에 대한 페이지 정보들을 file_page 에 가져와야 하나?
+    
 }

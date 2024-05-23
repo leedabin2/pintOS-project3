@@ -55,13 +55,12 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
     ASSERT(VM_TYPE(type) != VM_UNINIT)
 
     struct supplemental_page_table *spt = &thread_current()->spt;
-    
+
     /* Check wheter the upage is already occupied or not. */
     if (spt_find_page(spt, upage) == NULL) {
         struct page *new_page = (struct page *)malloc(sizeof(struct page));
         bool (*initializer)(struct page *, enum vm_type, void *) ;
-        // new_page->full_type = type;
-
+       
         switch (VM_TYPE(type))
         {
             case VM_ANON:
@@ -72,7 +71,7 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
                 break;
         } 
         uninit_new(new_page, upage, init, type, aux, initializer);
-    
+
         new_page->writable = writable; // 추가
         bool ok = spt_insert_page(&thread_current()->spt, new_page);
 
@@ -295,16 +294,16 @@ bool supplemental_page_table_copy(struct supplemental_page_table *dst UNUSED, st
         // 매핑됐냐 안 됐냐로 판단
         // 부모가 매핑이 안 됐으면, 즉 uninit이면 그 페이지를 그대로 spt에 복사해준다.
         // 부모가 매핑 됐으면 즉, uninit 이 아니면 페이지를 할당해주고, 즉시 매핑
-       
+        enum vm_type type = page_get_type(page);
         if (page->operations->type == VM_TYPE(VM_UNINIT)) // 부모가 매핑이 안 됐으면, 즉 uninit이면 그 페이지를 그대로 spt에 복사해준다.
-        {   
-            bool ok = vm_alloc_page_with_initializer(VM_ANON, page->va,page->writable, page->uninit.init, page->uninit.aux); // 페이지 생성후 보조 페이지 테이블에 넣기까지 성공
+         {  
+            bool ok = vm_alloc_page_with_initializer(type, page->va,page->writable, page->uninit.init, page->uninit.aux); // 페이지 생성후 보조 페이지 테이블에 넣기까지 성공
             if (!ok)
                 return false;
             
         } else 
         {   
-            bool ok = vm_alloc_page(VM_ANON, page->va, page->writable);
+            bool ok = vm_alloc_page(type, page->va, page->writable);
             if (!ok)
                 return false;
             struct page *child_page = spt_find_page(dst, page->va);
