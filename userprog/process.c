@@ -424,6 +424,7 @@ void process_exit(void) {
     for (int fd = 0; fd < FDT_COUNT_LIMIT; fd++){
         close(fd);
     }
+    process_cleanup();
 
     struct list_elem *child;
     for (child = list_begin(&thread_current()->child_list); // childs 순회
@@ -441,7 +442,6 @@ void process_exit(void) {
     sema_down(&curr->free_sema); // 부모의 exit_status가 정확히 전달되었는지 확인
 
     // 추후 프로세스 종료 메시지 구현할 것
-    process_cleanup();
 }
 
 /* 현재 프로세스의 리소스를 해제합니다. */
@@ -675,6 +675,7 @@ static bool load(const char *file_name, struct intr_frame *if_) {
 done:
     /* 로드가 성공했든 실패했든 여기에 도착합니다. */
     /* We arrive here whether the load is successful or not. */
+    lock_release(&filesys_lock);
     return success;
 }
 
@@ -864,7 +865,7 @@ static bool install_page(void *upage, void *kpage, bool writable) {
  * If you want to implement the function for only project 2, implement it on the
  * upper block. */
 
-bool lazy_load_segment(struct page *page, void *aux) { // anon 이든 file 이든 다 이 함수 실행함 aux = unin.aux
+bool lazy_load_segment(struct page *page, void *aux) { // anon 이든 file 이든 다 이 함수 실행함 aux =
     /* TODO: 파일에서 세그먼트를 로드합니다. */
     /* TODO: 이 함수는 주소 VA에서 처음 페이지 폴트가 발생할 때 호출됩니다. */
     /* TODO: 호출하는 동안 VA를 사용할 수 있습니다. */
