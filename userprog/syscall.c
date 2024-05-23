@@ -296,11 +296,12 @@ int read(int fd, void *buffer, unsigned size) {
 
     // 버퍼가 유효한 주소인지 체크
     check_address(buffer);
-    // struct page *page = spt_find_page(&thread_current()->spt, buffer);
-    // if (page->writable == 0 && !is_user_vaddr(page->va))
-    // {
-    //     exit(-1);
-    // }
+
+    struct page *page = spt_find_page(&thread_current()->spt, buffer);
+    if (page == NULL || page->writable == 0 || !is_user_vaddr(page->va))
+    {
+        exit(-1);
+    }
     
 
     // fd가 0이면 (stdin) input_getc()를 사용해서 키보드 입력을 읽고 버퍼에 저장(?)
