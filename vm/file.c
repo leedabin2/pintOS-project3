@@ -44,17 +44,18 @@ static bool file_backed_swap_out(struct page *page) {
 /* Destory the file backed page. PAGE will be freed by the caller. */
 static void file_backed_destroy(struct page *page) {
     struct file_page *file_page UNUSED = &page->file;
-    if(pml4_is_dirty(&thread_current()->pml4, page->va)) // 내용이 변경된 경우
+    struct aux* aux = file_page->aux;
+    if(pml4_is_dirty(thread_current()->pml4, page->va)) // 내용이 변경된 경우
     {   
-        struct aux *aux = file_page->aux;
+        file_write_at(aux->file , page->va, file_length(aux->file) ,aux->ofs);
+        pml4_set_dirty(thread_current()->pml4, page->va, 0); // 변경 사항 다시 변경해줌
  
         // 변경 사항을 파일에 다시 기록
-        file_write_at(file_page, page->va, file_length(file_page),file_page->aux->ofs);
         // 페이지 가상 페이지 목록에서 제거
-        file_page = spt_find_page(&thread_current()->spt, page->va);
-        free(file_page);
+        // file_page = spt_find_page(&thread_current()->spt, page->va);
+        // free(file_page);
     }
-    pml4_set_dirty(&thread_current()->pml4, page->va, 0); // 변경 사항 다시 변경해줌
+    pml4_clear_page(thread_current()->pml4,page->va);
 }
 
 /* Do the mmap */
