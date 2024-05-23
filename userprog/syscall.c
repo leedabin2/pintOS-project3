@@ -387,12 +387,12 @@ int exec (const char *cmd_line) {
 
 void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
     // fd로 열린 파일의 오프셋 바이트부터 length 바이트 만큼을 프로세스의 가상주소공간에 매핑
-    check_address(addr);
+    // check_address(addr);
 	struct file *file = fd_to_fileptr(fd); /* fd로 file을 열고*/
 
     struct page *page = spt_find_page(&thread_current()->spt,addr); // 기존 매핑된 페이지가 있는지
-
-    if (length <= 0 || fd == 0 || fd == 1 || fd == 2 || (offset % PGSIZE) != 0)  // 매핑을 실패하는 조건
+   
+    if (length <= 0 || fd == 0 || fd == 1 || fd == 2 || (offset % PGSIZE) != 0 || addr == NULL || page)  // 매핑을 실패하는 조건
         return false; 
 
     do_mmap(addr, length, writable, file, offset); // 매핑 정보를 전달 
