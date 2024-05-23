@@ -249,13 +249,11 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
 
     if (not_present) // 접근한 메모리가 frmae과 매핑되지 않은경우
     {
-        void *rsp = f->rsp; // user access인 경우 rsp는 유저 stack을 가리킨다.
+        void *stack_pointer = f->rsp; // user access인 경우 rsp는 유저 stack을 가리킨다.
         if (!user)          // kernel access인 경우 thread에서 rsp를 가져와야 한다. -> why? syscall에 진입할때 intr_frame에서 rsp 값 가져옴
-            rsp = thread_current()->rsp;
+            stack_pointer = thread_current()->rsp;
 
-        if (USER_STACK - (1 << 20) <= rsp - 8 && rsp - 8 == addr && addr <= USER_STACK)
-            vm_stack_growth(addr);
-        else if (USER_STACK - (1 << 20) <= rsp && rsp <= addr && addr <= USER_STACK)
+        if(addr >= stack_pointer - 8 && addr >= USER_STACK - (1<< 20) && addr <= USER_STACK)
             vm_stack_growth(addr);
 
         page = spt_find_page(spt, addr);

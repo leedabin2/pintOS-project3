@@ -282,6 +282,8 @@ int filesize(int fd) {
 // buffer 안에 fd로 열린 파일로 size 바이트를 읽음
 int read(int fd, void *buffer, unsigned size) {
     struct file *file = fd_to_fileptr(fd);
+    if(!spt_find_page(&thread_current()->spt,buffer)->writable)
+        exit(-1);
 
     // 버퍼가 유효한 주소인지 체크
     check_address(buffer);
