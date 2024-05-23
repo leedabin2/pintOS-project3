@@ -675,7 +675,7 @@ static bool load(const char *file_name, struct intr_frame *if_) {
 done:
     /* 로드가 성공했든 실패했든 여기에 도착합니다. */
     /* We arrive here whether the load is successful or not. */
-    lock_release(&filesys_lock);
+    // lock_release(&filesys_lock);
     return success;
 }
 

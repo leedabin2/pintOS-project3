@@ -209,8 +209,10 @@ bool remove(const char *name) {
 
 int open(const char *name) {
     check_address(name);
+    lock_acquire(&filesys_lock);
     struct file *file_obj = filesys_open(name);
     if (file_obj == NULL) {
+        lock_release(&filesys_lock);
         return -1;
     }
 
@@ -219,6 +221,7 @@ int open(const char *name) {
     if (fd == -1) {
         file_close(file_obj);
     }
+    lock_release(&filesys_lock);
 
     return fd;
 }
@@ -293,6 +296,12 @@ int read(int fd, void *buffer, unsigned size) {
 
     // 버퍼가 유효한 주소인지 체크
     check_address(buffer);
+    // struct page *page = spt_find_page(&thread_current()->spt, buffer);
+    // if (page->writable == 0 && !is_user_vaddr(page->va))
+    // {
+    //     exit(-1);
+    // }
+    
 
     // fd가 0이면 (stdin) input_getc()를 사용해서 키보드 입력을 읽고 버퍼에 저장(?)
     if (fd == 0) {
