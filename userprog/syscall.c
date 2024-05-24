@@ -159,6 +159,27 @@ void check_address(void *addr) {
 
 }
 
+struct page *is_valid_address(void *addr) {
+    struct thread *curr = thread_current();
+    char temp = *(char *)addr;
+
+    if (is_kernel_vaddr(addr) || addr == NULL)
+        return NULL;
+
+    return spt_find_page(&curr->spt, addr);
+}
+
+
+void check_valid_buffer(void *buffer, size_t size, bool writable) {
+    for (size_t i = 0; i < size; i++) {
+        /* buffer가 spt에 존재하는지 검사 */
+        struct page *page = is_valid_address(buffer + i);
+
+        if (!page || (writable && !(page->writable)))
+            exit(-1);
+    }
+}
+
 /* fd로 file 주소를 반환하는 함수 */
 struct file *fd_to_fileptr(int fd) {
   struct thread *t = thread_current();
@@ -199,12 +220,18 @@ void exit(int status) {
 
 bool create(const char *name, unsigned initial_size) {
     check_address(name);
-    return filesys_create(name, initial_size);
+    lock_acquire(&filesys_lock);
+    bool ok = filesys_create(name, initial_size);
+    lock_release(&filesys_lock);
+    return ok;
 }
 
 bool remove(const char *name) {
     check_address(name);
-    return filesys_remove(name);
+    lock_acquire(&filesys_lock);
+    bool ok = filesys_remove(name);
+    lock_release(&filesys_lock);
+    return ok;
 }
 
 int open(const char *name) {
@@ -215,12 +242,13 @@ int open(const char *name) {
         lock_release(&filesys_lock);
         return -1;
     }
+    // lock_release(&filesys_lock);
 
     int fd = add_file_to_fdt(file_obj);
-
     if (fd == -1) {
         file_close(file_obj);
     }
+
     lock_release(&filesys_lock);
 
     return fd;
@@ -228,7 +256,8 @@ int open(const char *name) {
 
 /* console 출력하는 함수 */
 int write(int fd, const void *buffer, unsigned size) {
-    check_address(buffer);
+    // check_address(buffer);
+    check_valid_buffer(buffer, size,  false);
     struct file *file = fd_to_fileptr(fd);
     int result;
 
@@ -295,14 +324,15 @@ int read(int fd, void *buffer, unsigned size) {
     struct file *file = fd_to_fileptr(fd);
 
     // 버퍼가 유효한 주소인지 체크
-    check_address(buffer);
+    // check_address(buffer);
+    check_valid_buffer(buffer, size, true);
 
-    struct page *page = spt_find_page(&thread_current()->spt, buffer);
-    if (page == NULL || page->writable == 0 || !is_user_vaddr(page->va))
-    {
-        exit(-1);
-    }
-    
+    // struct page *page = spt_find_page(&thread_current()->spt, buffer);
+    // if (page == NULL || page->writable == 0 || !is_user_vaddr(page->va))
+    // {
+    //     exit(-1);
+    // }
+
 
     // fd가 0이면 (stdin) input_getc()를 사용해서 키보드 입력을 읽고 버퍼에 저장(?)
     if (fd == 0) {
@@ -335,8 +365,9 @@ void seek (int fd, unsigned position) {
     if (file == NULL) {
         return -1;  // 유효하지 않은 파일 디스크립터로 인한 종료
     }
-
+    lock_acquire(&filesys_lock);
     file_seek (file, position);
+    lock_release(&filesys_lock);
 }
 
 unsigned tell (int fd) {
@@ -413,11 +444,11 @@ void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
         return false; 
     //file_length(file) <= 0
     // lock_acquire(&filesys_lock);
-    do_mmap(addr, length, writable, file, offset); // 매핑 정보를 전달 
+    return do_mmap(addr, length, writable, file, offset); // 매핑 정보를 전달 
     // lock_release(&filesys_lock);
 }
 
 void munmap (void *addr) {
-	// mmap에 대한 호출에 의해 반환된 가상주소
+	// mmap에 대한 호출에 의해 반환된 가상주소 - 페이지의 시작주소
     do_munmap(addr);
 }

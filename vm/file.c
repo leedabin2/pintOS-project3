@@ -28,7 +28,6 @@ bool file_backed_initializer(struct page *page, enum vm_type type, void *kva) {
     page->operations = &file_ops;
 
     struct file_page *file_page = &page->file;
-    page->file.aux = page->uninit.aux;
 }
 
 /* Swap in the page by read contents from the file. */
@@ -44,18 +43,16 @@ static bool file_backed_swap_out(struct page *page) {
 /* Destory the file backed page. PAGE will be freed by the caller. */
 static void file_backed_destroy(struct page *page) {
     struct file_page *file_page UNUSED = &page->file;
-    struct aux* aux = file_page->aux;
+    struct aux* aux = (struct aux *)page->uninit.aux; //file의 aux를 가져옴
     if(pml4_is_dirty(thread_current()->pml4, page->va)) // 내용이 변경된 경우
     {   
-        file_write_at(aux->file , page->va, file_length(aux->file) ,aux->ofs);
+        // buffer(page->va)에 있는 데이터를 size만큼, file의 file_ofs부터 써줌
+        file_write_at(aux->file , page->frame->kva, aux->page_read_bytes ,aux->ofs);  // 변경 사항을 파일에 다시 기록
         pml4_set_dirty(thread_current()->pml4, page->va, 0); // 변경 사항 다시 변경해줌
- 
-        // 변경 사항을 파일에 다시 기록
-        // 페이지 가상 페이지 목록에서 제거
-        // file_page = spt_find_page(&thread_current()->spt, page->va);
-        // free(file_page);
+
     }
-    pml4_clear_page(thread_current()->pml4,page->va);
+    pml4_clear_page(thread_current()->pml4,page->va);  // present bit을 0으로 만들어서 디스크에 내려(swap out)있음
+
 }
 
 /* Do the mmap */
@@ -95,7 +92,16 @@ void *do_mmap(void *addr, size_t length, int writable, struct file *file, off_t 
 
 /* Do the munmap */
 void do_munmap(void *addr) {
-    // 매핑이 해제되면, 모든 변경사항(pml4 is drity)함수를 통해서 파일에 반영(file_write_at)후 페이지 목록에서 삭제
-    // 파일에 대한 페이지 정보들을 file_page 에 가져와야 하나?
+    
+    while (true)
+    {
+        struct page *page =  spt_find_page(&thread_current()->spt, addr); // 매핑해제할 시작주소로 페이지를 가져옴
+
+        if (page == NULL)
+            break;
+
+        destroy(page);  // 매핑이 해제되면, 모든 변경사항(pml4 is drity)함수를 통해서 파일에 반영(file_write_at)후 페이지 목록에서 삭제
+        addr += PGSIZE;  
+    }
     
 }
