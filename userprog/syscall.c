@@ -130,6 +130,12 @@ void syscall_handler(struct intr_frame *f UNUSED) {
         case SYS_CLOSE:
             close(f->R.rdi);
             break;
+        case SYS_MMAP:
+            f->R.rax = mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
+            break;
+        case SYS_MUNMAP:
+            munmap(f->R.rdi);
+            break;
         default:
             thread_exit();
             break;
@@ -201,8 +207,10 @@ bool remove(const char *name) {
 
 int open(const char *name) {
     check_address(name);
+    lock_acquire(&filesys_lock);
     struct file *file_obj = filesys_open(name);
     if (file_obj == NULL) {
+        lock_release(&filesys_lock);
         return -1;
     }
 
@@ -211,7 +219,7 @@ int open(const char *name) {
     if (fd == -1) {
         file_close(file_obj);
     }
-
+    lock_release(&filesys_lock);
     return fd;
 }
 
@@ -229,9 +237,7 @@ int write(int fd, const void *buffer, unsigned size) {
         result = size;
     }
     else { 
-        lock_acquire(&filesys_lock);
         result = file_write(file,buffer,size);
-        lock_release(&filesys_lock); 
     }
 
     return result;
@@ -273,8 +279,9 @@ int filesize(int fd) {
     if (file == NULL) {
       return - 1;
     }
-    
-    int size = file_length(file); 
+    lock_acquire(&filesys_lock);
+    int size = file_length(file);
+    lock_release(&filesys_lock); 
 
     return size; 
 }
@@ -282,9 +289,17 @@ int filesize(int fd) {
 // buffer 안에 fd로 열린 파일로 size 바이트를 읽음
 int read(int fd, void *buffer, unsigned size) {
     struct file *file = fd_to_fileptr(fd);
-
+    
     // 버퍼가 유효한 주소인지 체크
     check_address(buffer);
+    // Test : pt-write-code2 해결
+    lock_acquire(&filesys_lock);
+    struct page *page = spt_find_page(&thread_current()->spt, buffer);
+    if (page == NULL || page->writable == 0 || !is_user_vaddr(page->va))
+    {
+        exit(-1);
+    }
+
 
     // fd가 0이면 (stdin) input_getc()를 사용해서 키보드 입력을 읽고 버퍼에 저장(?)
     if (fd == 0) {
@@ -301,7 +316,6 @@ int read(int fd, void *buffer, unsigned size) {
 
     // filesys_lock 선언(syscall.h에 만들기)
     // syscall_init에도 lock 초기화함수 lock_init을 선언  
-    lock_acquire(&filesys_lock);
     // 그 외는 파일 객체 찾고, size 바이트 크기 만큼 파일을 읽어서 버퍼에 넣어준다.
     off_t read_count = file_read (file, buffer, size);
     lock_release(&filesys_lock);
@@ -317,8 +331,9 @@ void seek (int fd, unsigned position) {
     if (file == NULL) {
         return -1;  // 유효하지 않은 파일 디스크립터로 인한 종료
     }
-
+    lock_acquire(&filesys_lock);
     file_seek (file, position);
+    lock_release(&filesys_lock);
 }
 
 unsigned tell (int fd) {
@@ -336,7 +351,6 @@ void close (int fd) {
     if (file == NULL) {
       return -1;
     }
-
     file_close(file);
     delete_file_from_fdt(fd);
 }
@@ -373,4 +387,41 @@ int exec (const char *cmd_line) {
         exit(-1);
     }
     return result;
+}
+
+void *mmap(void *addr, size_t length, int writable, int fd, off_t offset)
+{
+    struct file *file = fd_to_fileptr(fd);
+    struct page *page = spt_find_page(&thread_current()->spt, addr);
+
+    if (addr == NULL)
+        return false;
+    if (!is_user_vaddr(addr+length) || !is_user_vaddr(addr))
+        return false;
+    if ((long long)length <= 0)
+        return false;
+    if (fd == 0 || fd == 1 || fd == 2)
+        return false;
+    if (offset % PGSIZE != 0)
+        return false;
+    if (page)
+        return false;
+    if (addr != pg_round_down(addr))
+        return false;
+    if (!file)
+        return false;
+    do_mmap(addr, length, writable, file, offset);
+}
+
+void munmap(void * addr)
+{
+    // check_address(addr);
+    // struct page * page = spt_find_page(&thread_current()->spt, addr);
+    // if (page == NULL)
+    //     return false;
+    // if (page_get_type(page) != VM_FILE)
+    //     return false;
+    // lock_acquire(&filesys_lock);
+    do_munmap(addr);
+    // lock_release(&filesys_lock);
 }

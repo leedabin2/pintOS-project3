@@ -436,6 +436,22 @@ void process_exit(void) {
     // 실행중에 수정 못하도록
     file_close(curr->running);
 
+    struct supplemental_page_table *spt = &curr->spt;
+    if(!hash_empty(&spt->spt_hash))
+    {
+        struct hash_iterator iter;
+        hash_first(&iter, &spt->spt_hash);
+        while(hash_next(&iter))
+        {
+            struct page *page = hash_entry(hash_cur(&iter), struct page, spt_entry);
+            if (page->operations->type == VM_FILE)
+            {
+                do_munmap(page->va);
+            }
+        }
+    }
+
+
     sema_up(&curr->wait_sema); // 기다리고 있는 부모 thread에게 signal 보냄
     sema_down(&curr->free_sema); // 부모의 exit_status가 정확히 전달되었는지 확인
 
@@ -450,6 +466,8 @@ static void process_cleanup(void) {
 
 #ifdef VM
     supplemental_page_table_kill(&curr->spt);
+    // if (!hash_empty(&curr->spt.spt_hash))
+    //     supplemental_page_table_kill(&curr->spt);
 #endif
 
     uint64_t *pml4;
@@ -863,7 +881,7 @@ static bool install_page(void *upage, void *kpage, bool writable) {
  * If you want to implement the function for only project 2, implement it on the
  * upper block. */
 
-static bool lazy_load_segment(struct page *page, void *aux) {
+bool lazy_load_segment(struct page *page, void *aux) {
     /* TODO: 파일에서 세그먼트를 로드합니다. */
     /* TODO: 이 함수는 주소 VA에서 처음 페이지 폴트가 발생할 때 호출됩니다. */
     /* TODO: 호출하는 동안 VA를 사용할 수 있습니다. */
@@ -878,12 +896,11 @@ static bool lazy_load_segment(struct page *page, void *aux) {
     off_t ofs = data->ofs;
     struct file * file = data->file;
 
-    file_seek(file, ofs); // 왜 해야하는지 모르겠음
+    file_seek(file, ofs);
 
     if (file_read(file, page->frame->kva, page_read_bytes) != (int)page_read_bytes)
         return false;
-    // free(data);
-    memset(page->va + page_read_bytes, 0, page_zero_bytes);
+    memset(page->frame->kva + page_read_bytes, 0, page_zero_bytes);
     return true;
 }
 

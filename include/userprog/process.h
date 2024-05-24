@@ -10,6 +10,9 @@ int process_wait (tid_t);
 void process_exit (void);
 void process_activate (struct thread *next);
 
+/* project3 에서 헤더파일 참조해야하므로 추가하자! */
+bool lazy_load_segment(struct page *page, void *aux);
+
 struct aux {
 	struct file *file ;
 	off_t ofs; 

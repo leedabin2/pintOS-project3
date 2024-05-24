@@ -67,7 +67,6 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
         
         struct page *new_page = (struct page *)malloc(sizeof(struct page));
         bool (*initializer)(struct page *, enum vm_type, void *) ;
-        // new_page->full_type = type;
      
         switch (VM_TYPE(type))
         {
@@ -193,78 +192,43 @@ static void vm_stack_growth(void *addr UNUSED) {
 static bool vm_handle_wp(struct page *page UNUSED) {
 }
 
-/* Return true on success */
-// bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
-//     struct supplemental_page_table *spt UNUSED = &thread_current()->spt; // 현재 실행중인 스레드의 spt
-    
-//     uint64_t MAX_stack = USER_STACK - (1>>20); // 최대 스택 범위
-//     uint64_t rsp = user ? f->rsp : thread_current()->rsp; // 여기서 user : 참 -> user 접근 , 거짓 -> kernel 접근
-
-//     /* 1. 주소값이 커널 가상 메모리 영역에 존재하는 경우 */
-//     if  (is_kernel_vaddr(addr)){
-//         return false;
-//     }
-
-//     /* 2. 읽기 전용 페이지에 대해 쓰기를 시도하는 상황 */
-// 	    if ((!not_present) && write){
-//     	return false;}
-
-//     /* 3. 접근하려던 주소에서 데이터를 얻을 수 없는 경우 */
-//     struct page * page = spt_find_page(spt,pg_round_down(addr)); // spt에서 addr 에 해당하는 page를 찾는다
-//     if (page == NULL){
-//         if (MAX_stack < addr < USER_STACK && addr > rsp - 8 ){ // 해당 주소값이 스택영역에 있고, rsp 기준 8바이트 아래까지 범위 내에 주소값이 존재한다면 stack_growth 진행
-//             vm_stack_growth(pg_round_down(addr));              // stack_bottom 값을 기준으로 4kb의 페이지 할당
-//             page = spt_find_page(spt, pg_round_down(addr));
-//         }
-//         else {
-//             return false;
-//         }
-//     }
-//     // struct page *page = NULL;
-
-//     // 유저 프로세스가 접근하려던 주소에서 데이터를 얻을 수 없거나, 페이지가 커널 가상 메모리 영역에 존재하거나, 읽기 전용 페이지에 대해 쓰기를 시도하는 상황 
-//     // 프로세스를 종료시키고 프로세스의 모든 자원을 해제합니다.
-//     /* TODO: Validate the fault */
-//     /* TODO: Your code goes here */
-//     // 유효한 페이지 폴트인지 검사
-//     // 유효한 페이지 폴트라면 (위와 같은 상황) 에러 처리 
-//     // 그렇지 않다면, bogus 폴트 (일단 , 지연 로딩의 경우)
-//     // 콘텐츠를 로드
-//     // bogus 폴트의 case - 지연 로딩 페이지 , 스왑 아웃 페이지, 쓰기 보호페이지 (extra)
-//     // 지연 로딩 페이지의 경우 - vm_alloc_page_with_initializer 함수에서 세팅해 놓은 초기화 함수를 호출
-//     // process.c 의 lazy_load_segment 함수 구현해야 함
-
-//     return vm_do_claim_page(page);
-// }
-bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
-                         bool user UNUSED, bool write UNUSED, bool not_present UNUSED)
-{
+bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
     struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
-    struct page *page = NULL;
-    if (addr == NULL)
+    //write: page fault를 일으킨 명령어가 write일 경우
+
+    if (addr == NULL || !is_user_vaddr(addr)) // 사용자 주소가 아닌 경우 
         return false;
 
-    if (is_kernel_vaddr(addr))
-        return false;
+    // struct intr_frame *user_if = pg_round_up(thread_current() + 1) - sizeof(struct intr_frame);
+	// void *rsp = user_if->rsp;
+    void *rsp = f->rsp; 
+    if (!user) { // ex) syscall 의 커널모드에서 페이지 폴트가 나서 , user stack을 증가시켜야 할 때, 
+        void *rsp = thread_current()->rsp; // syscall에서 커널모드로 전환하기 전에 저장한 user모드의 rsp를 가져옴
+    }
 
-    if (not_present) // 접근한 메모리가 frmae과 매핑되지 않은경우
+    if (not_present) // 접근한 메모리의 physical page가 존재하지 않은 경우
     {
-        void *rsp = f->rsp; // user access인 경우 rsp는 유저 stack을 가리킨다.
-        if (!user)          // kernel access인 경우 thread에서 rsp를 가져와야 한다. -> why? syscall에 진입할때 intr_frame에서 rsp 값 가져옴
-            rsp = thread_current()->rsp;
-
-        if (USER_STACK - (1 << 20) <= rsp - 8 && rsp - 8 == addr && addr <= USER_STACK)
+        if (addr >= rsp - 8 && rsp - 8 >= USER_STACK - (1<<20) && addr <= USER_STACK ) {
             vm_stack_growth(addr);
-        else if (USER_STACK - (1 << 20) <= rsp && rsp <= addr && addr <= USER_STACK)
-            vm_stack_growth(addr);
-
-        page = spt_find_page(spt, addr);
-        if (page == NULL)
+        } 
+        if (addr >= rsp && rsp >= USER_STACK - (1<<20) && addr <= USER_STACK) {
+            vm_stack_growth(addr); 
+        }
+        struct page * page = spt_find_page(spt,addr);
+        if (page == NULL){ // 찐 폴트는 걍 죽음
             return false;
-        if (write == 1 && page->writable == 0) // write 불가능한 페이지에 write 요청한 경우
-            return false;
+        }
         return vm_do_claim_page(page);
     }
+  // 유저 프로세스가 접근하려던 주소에서 데이터를 얻을 수 없거나, 페이지가 커널 가상 메모리 영역에 존재하거나, 읽기 전용 페이지에 대해 쓰기를 시도하는 상황 
+    // 프로세스를 종료시키고 프로세스의 모든 자원을 해제합니다.
+    /* TODO: Validate the fault */
+    /* TODO: Your code goes here */
+    // 그렇지 않다면, bogus 폴트 (일단 , 지연 로딩의 경우)
+    // 콘텐츠를 로드
+    // bogus 폴트의 case - 지연 로딩 페이지 , 스왑 아웃 페이지, 쓰기 보호페이지 (extra)
+    // 지연 로딩 페이지의 경우 - vm_alloc_page_with_initializer 함수에서 세팅해 놓은 초기화 함수를 호출
+    // process.c 의 lazy_load_segment 함수 구현해야 함
     return false;
 }
 
@@ -325,39 +289,58 @@ bool supplemental_page_table_copy(struct supplemental_page_table *dst UNUSED, st
     struct hash_iterator i; // 일종의 배열의 요소를 가리키는 포인터로 생각하자!
     hash_first(&i, &src->spt_hash);
     while(hash_next(&i)){
-        struct page *p = hash_entry(hash_cur(&i), struct page, spt_entry); // hash_cur() : return 값은 hash_elem
-        enum vm_type type = p->operations->type;
-        void * va = p->va;
-        bool writable = p->writable;
+        struct page *page = hash_entry(hash_cur(&i), struct page, spt_entry); // hash_cur() : return 값은 hash_elem
+        // void * va = p->va;
+        // bool writable = p->writable;
+        enum vm_type type = page_get_type(page);
+        if (page->operations->type == VM_UNINIT){ // 초기화 되지 않은 페이지
+            // vm_initializer *init = p->uninit.init;
+            // void * aux = p->uninit.aux;
+            if (!vm_alloc_page_with_initializer(type,page->va ,page->writable, page->uninit.init, page->uninit.aux)){
+                return false;
+            }
+        }
+        else{
+        // 이미 초기화된 페이지 => 1. 페이지 초기화 되서 할당되어야함 2. 물리 프레임 매핑 되어야함
+            if(!vm_alloc_page(type, page->va, page->writable)){ 
+                return false;
+            }
+            struct page * child_page = spt_find_page(dst,page->va);
+            vm_do_claim_page(child_page);
+            memcpy(child_page->frame->kva, page->frame->kva, PGSIZE); // 물리 메모리에 내용 복사
+        }
         
-        if (type == VM_UNINIT){ // 초기화 되지 않은 페이지
-            vm_initializer *init = p->uninit.init;
-            void * aux = p->uninit.aux;
-            if (!vm_alloc_page_with_initializer(VM_ANON, va, writable, init, aux)){
-                return false;
-            }
-        }
-        else {// 이미 초기화된 페이지 => 1. 페이지 초기화 되서 할당되어야함 2. 물리 프레임 매핑 되어야함
-            if(!vm_alloc_page(VM_ANON, va, writable)){ 
-                return false;
-            }
-            if(!vm_claim_page(va)){
-                return false;
-            }
-            struct page *dst_page = spt_find_page(dst,va);
-            memcpy(dst_page->frame->kva, p->frame->kva, PGSIZE); // 물리 메모리에 내용 복사
-        }
     }
     return true;
 }
 
 /* Free the resource hold by the supplemental page table */
+// void supplemental_page_table_kill(struct supplemental_page_table *spt UNUSED) {
+//     /* TODO: Destroy all the supplemental_page_table hold by thread and
+//      * TODO: writeback all the modified contents to the storage. */
+//     /* TODO: 스레드가 보유한 모든 추가 페이지 테이블을 파괴하고, */
+//     /* TODO: 수정된 모든 내용을 저장소에 다시 쓰세요. */
+//     struct hash_iterator i;
+//     hash_first(&i, &spt->spt_hash);
+//     while(hash_next(&i))
+//     {
+//         struct page *page = hash_entry(hash_cur(&i), struct page, spt_entry);
+//         if (!page->operations->type == VM_FILE)
+//         {
+//             do_munmap(page->va);
+//         }
+//     }
+
+//     hash_clear(&spt->spt_hash, clear_function);
+
+// }
+
 void supplemental_page_table_kill(struct supplemental_page_table *spt UNUSED) {
     /* TODO: Destroy all the supplemental_page_table hold by thread and
      * TODO: writeback all the modified contents to the storage. */
     /* TODO: 스레드가 보유한 모든 추가 페이지 테이블을 파괴하고, */
     /* TODO: 수정된 모든 내용을 저장소에 다시 쓰세요. */
-    
+    struct hash_iterator i;
     hash_clear(&spt->spt_hash, clear_function);
 }
 
