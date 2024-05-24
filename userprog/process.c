@@ -432,9 +432,9 @@ void process_exit(void) {
         sema_up(&t->free_sema);
     }
     // 메모리 누수 방지
+    file_close(curr->running);
     palloc_free_page(curr->fdt);
     // 실행중에 수정 못하도록
-    file_close(curr->running);
 
     struct supplemental_page_table *spt = &curr->spt;
     if(!hash_empty(&spt->spt_hash))
@@ -452,11 +452,11 @@ void process_exit(void) {
     }
 
 
+    process_cleanup();
     sema_up(&curr->wait_sema); // 기다리고 있는 부모 thread에게 signal 보냄
     sema_down(&curr->free_sema); // 부모의 exit_status가 정확히 전달되었는지 확인
 
     // 추후 프로세스 종료 메시지 구현할 것
-    process_cleanup();
 }
 
 /* 현재 프로세스의 리소스를 해제합니다. */

@@ -146,7 +146,7 @@ void do_munmap(void *addr)
 
 		if (pml4_is_dirty(thread_current()->pml4, page->va))
 		{
-			file_write_at(aux->file, addr, aux->page_read_bytes, aux->ofs);
+			file_write_at(aux->file, page->frame->kva, aux->page_read_bytes, aux->ofs);
 			pml4_set_dirty(thread_current()->pml4, page->va, 0);
 		}
 		pml4_clear_page(thread_current()->pml4, page->va);
