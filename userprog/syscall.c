@@ -197,12 +197,18 @@ void exit(int status) {
 
 bool create(const char *name, unsigned initial_size) {
     check_address(name);
-    return filesys_create(name, initial_size);
+    lock_acquire(&filesys_lock);
+    bool ok = filesys_create(name, initial_size);
+    lock_release(&filesys_lock);
+    return ok;
 }
 
 bool remove(const char *name) {
     check_address(name);
-    return filesys_remove(name);
+    lock_acquire(&filesys_lock);
+    bool ok = filesys_remove(name);
+    lock_release(&filesys_lock);
+    return ok;
 }
 
 int open(const char *name) {
