@@ -62,7 +62,7 @@ struct page {
 	bool writable ;
 	// enum vm_type full_type;
 	struct hash_elem spt_entry;
-
+	int page_cnt;
 	/* 각 유형의 데이터가 union에 바인딩됩니다.
 	 * 각 함수는 현재 union을 자동으로 감지합니다. */
 	/* Per-type data are binded into the union.
