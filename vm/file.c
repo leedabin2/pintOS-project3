@@ -68,14 +68,23 @@ void *do_mmap(void *addr, size_t length, int writable, struct file *file, off_t 
 
         // 연속된 페이지의 시작 주소 리턴
         void *start_addr = addr;
-        if (length <= PGSIZE) {
-            cnt = 1; // length가 PGSIZE보다 작으면 cnt를 1로 설정
-        } else if (length % PGSIZE) {
-            cnt = (length / PGSIZE) + 1;
+        // if (length <= PGSIZE) {
+        //     cnt = 1; // length가 PGSIZE보다 작으면 cnt를 1로 설정
+        // } else if (length % PGSIZE) {
+        //     cnt = (length / PGSIZE) + 1;
+        // } else
+        // {
+        //     cnt = length / PGSIZE;
+        // }
+
+        if (read_bytes % PGSIZE == 0)
+        {
+            cnt = read_bytes / PGSIZE;
         } else
         {
-            cnt = length / PGSIZE;
+            cnt = read_bytes / PGSIZE + 1;
         }
+        
 
 		while (read_bytes > 0 || zero_bytes > 0) {
         size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
@@ -94,7 +103,7 @@ void *do_mmap(void *addr, size_t length, int writable, struct file *file, off_t 
         
         struct page *page = spt_find_page(&thread_current()->spt, addr);
         page->page_cnt = cnt;
-        // cnt--;
+        cnt--;
 
         read_bytes -= page_read_bytes;
         zero_bytes -= page_zero_bytes;
@@ -107,15 +116,6 @@ void *do_mmap(void *addr, size_t length, int writable, struct file *file, off_t 
 /* Do the munmap */
 void do_munmap(void *addr) {
     
-    // struct page *page =  spt_find_page(&thread_current()->spt, addr); // 매핑해제할 시작주소로 페이지를 가져옴
-    // int cnt = page->page_cnt; 
-    // for (int i = 0; i < cnt; i++)
-    // {
-    //     if (page)
-    //        destroy(page);  // 매핑이 해제되면, 모든 변경사항(pml4 is drity)함수를 통해서 파일에 반영(file_write_at)후 페이지 목록에서 삭제
-    //     addr += PGSIZE;  
-    //     page =  spt_find_page(&thread_current()->spt, addr); 
-    // }
     // while (true)
     // {
     //     struct page *page =  spt_find_page(&thread_current()->spt, addr); // 매핑해제할 시작주소로 페이지를 가져옴
@@ -130,7 +130,7 @@ void do_munmap(void *addr) {
 
     struct page * page = spt_find_page(&thread_current()->spt, addr); // 1. 매핑 해제할 시작주소로 페이지를 가져옴
     int page_cnt = page->page_cnt;
-    for (int i  = 1; i <= page_cnt; i++)
+    for (int i  = 0; i < page_cnt; i++)
     {
         if (page)
             destroy(page);
