@@ -20,12 +20,6 @@ static const struct page_operations file_ops = {
 /* The initializer of file vm */
 /* 파일 지원 페이지 하위 시스템을 초기화 */
 void vm_file_init(void) {
-
-    // disk get
-    // 1mb 의 디스크가 있다
-    // 1개의 페이지가 8개의 섹터
-    // bit map 을 만들어서 페이지의 디스크 주소를 찾기 위한 
-    // sw
 }
 
 /* Initialize the file backed page */
@@ -67,7 +61,7 @@ static bool file_backed_swap_out(struct page *page) {
         pml4_set_dirty(thread_current()->pml4, page->va, 0); // 변경 사항 다시 변경해줌
 
     }
-    pml4_clear_page(thread_current()->pml4,page->va);  // present bit을 0으로 만들어서 디스크에 내려(swap out)있음\
+    pml4_clear_page(thread_current()->pml4,page->va);  // present bit을 0으로 만들어서 디스크에 내려(swap out)있음
 
 }
 
