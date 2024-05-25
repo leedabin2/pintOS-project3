@@ -33,11 +33,42 @@ bool file_backed_initializer(struct page *page, enum vm_type type, void *kva) {
 /* Swap in the page by read contents from the file. */
 static bool file_backed_swap_in(struct page *page, void *kva) {
     struct file_page *file_page UNUSED = &page->file;
+    
+    if (page == NULL)
+        return false;
+    
+    struct aux * aux = (struct aux *)page->uninit.aux;
+
+    struct file * file = aux->file;
+    off_t ofs = aux->ofs;
+    size_t page_read_bytes = aux->page_read_bytes;
+    size_t page_zero_bytes = PGSIZE - page_read_bytes;
+
+    file_seek(file, ofs);
+
+    if (file_read(file, kva, page_read_bytes) != (int)page_read_bytes) // file_read -> return bytes
+        return false;
+    
+    memset (kva + page_read_bytes, page_zero_bytes, 0);
+    
+    return true;
 }
 
 /* Swap out the page by writeback contents to the file. */
 static bool file_backed_swap_out(struct page *page) {
     struct file_page *file_page UNUSED = &page->file;
+
+    if (page == NULL)
+        return false;
+    
+    struct aux * aux = (struct aux *)page->uninit.aux;
+
+    if (pml4_is_dirty(thread_current()->pml4, page->va))
+    {
+        file_write_at(aux->file, page->frame->kva, aux->page_read_bytes, aux->ofs);
+        pml4_set_dirty(thread_current()->pml4, page->va, 0);
+    }
+    pml4_clear_page(thread_current()->pml4, page->va);
 }
 
 /* Destory the file backed page. PAGE will be freed by the caller. */
@@ -68,13 +99,13 @@ void *do_mmap(void *addr, size_t length, int writable, struct file *file, off_t 
 
         // 연속된 페이지의 시작 주소 리턴
         void *start_addr = addr;
-        if (length <= PGSIZE) {
+        if (read_bytes <= PGSIZE) {
             cnt = 1; // length가 PGSIZE보다 작으면 cnt를 1로 설정
-        } else if (length % PGSIZE) {
-            cnt = (length / PGSIZE) + 1;
+        } else if (read_bytes % PGSIZE) {
+            cnt = (read_bytes / PGSIZE) + 1;
         } else
         {
-            cnt = length / PGSIZE;
+            cnt = read_bytes / PGSIZE;
         }
 
 		while (read_bytes > 0 || zero_bytes > 0) {
@@ -130,13 +161,11 @@ void do_munmap(void *addr) {
 
     struct page * page = spt_find_page(&thread_current()->spt, addr); // 1. 매핑 해제할 시작주소로 페이지를 가져옴
     int page_cnt = page->page_cnt;
-    for (int i  = 1; i <= page_cnt; i++)
+    for (int i = 0 ; i < page_cnt ; i++)
     {
         if (page)
             destroy(page);
         addr += PGSIZE;
         page = spt_find_page(&thread_current()->spt, addr);
     }
-
-    
 }

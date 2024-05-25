@@ -25,8 +25,8 @@ enum vm_type {
 	 * 값이 int에 맞게 들어가는 한 더 추가할 수 있습니다. */
 	/* Auxillary bit flag marker for store information. You can add more
 	 * markers, until the value is fit in the int. */
-	VM_MARKER_0 = (1 << 3),
-	VM_MARKER_1 = (1 << 4),
+	VM_MARKER_0 = (1 << 3), 
+	VM_MARKER_1 = (1 << 4), 
 
 	/* 이 값보다 큰 값은 사용하지 마십시오. */
 	/* DO NOT EXCEED THIS VALUE. */
@@ -82,6 +82,8 @@ struct page {
 struct frame {
 	void *kva;
 	struct page *page;
+	/* swap in/out */
+	struct list_elem frame_elem;
 };
 
 /* 페이지 작업에 대한 함수 테이블입니다.

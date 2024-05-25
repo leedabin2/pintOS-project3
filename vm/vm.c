@@ -12,6 +12,8 @@
  * intialize codes. */
 #include <stdlib.h>
 /* 가상 메모리 서브시스템을 각 서브시스템의 초기화 코드를 호출함으로써 초기화합니다. */
+struct list frame_table;
+struct list_elem * frame_start;
 
 void vm_init(void) {
     vm_anon_init();
@@ -22,6 +24,10 @@ void vm_init(void) {
     register_inspect_intr();
     /* DO NOT MODIFY UPPER LINES. */
     /* TODO: Your code goes here. */
+
+    /* swap in/out 구현을 위해 */
+    list_init(&frame_table);
+
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -133,8 +139,21 @@ void spt_remove_page(struct supplemental_page_table *spt, struct page *page) {
 static struct frame *vm_get_victim(void) {
     struct frame *victim = NULL;
     /* TODO: The policy for eviction is up to you. */
+    struct thread * curr = thread_current();
+    struct list_elem * e = frame_start;
 
-    return victim;
+    for (frame_start = e; list_end(&frame_table), list_next(frame_start))
+    {   
+        victim = list_entry(frame_start, struct frame, frame_elem); // 시작하는 프레임 엘리먼트를 이용해 프레임 주솟값 가져오기
+        if (pml4_is_accessed(curr->pml4, victim->page->va))
+        {
+            pml4_set_accessed(curr->pml4, victim->page->va, 0);
+        }
+        else
+        {
+            return victim;
+        }
+    }
 }
 
 /* Evict one page and return the corresponding frame.
@@ -145,8 +164,10 @@ static struct frame *vm_get_victim(void) {
 static struct frame *vm_evict_frame(void) {
     struct frame *victim UNUSED = vm_get_victim();
     /* TODO: swap out the victim and return the evicted frame. */
+    swap_out(victim->page);
 
-    return NULL;
+    // return NULL;
+    return victim;
 }
 
 /* palloc() and get frame. If there is no available page, evict the page
@@ -161,12 +182,18 @@ static struct frame *vm_evict_frame(void) {
 static struct frame *vm_get_frame(void) {
     // struct frame *frame = NULL;
     /* TODO: Fill this function. */
+    struct frame *frame = (struct frame *)malloc(sizeof(struct frame));
     uint64_t *kva = palloc_get_page(PAL_USER); // palloc_get_page()를 통해 물리적 메모리를 할당하고, kva를 반환함
 
+    /* 할당된 프레임이 없을때 희생정책에 의해서 퇴출할 프레임 구현해야함 */
     if (kva == NULL) 
+    {
         PANIC("todo : swap out 구현해야함.");
+        frame = vm_evict_frame();
+        frame->page = NULL;
+        return frame;
+    }    
     
-    struct frame *frame = (struct frame *)malloc(sizeof(struct frame));
     // 구조체 멤버 초기화
     frame->kva = kva; 
     frame->page = NULL;
@@ -234,6 +261,7 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool us
 void vm_dealloc_page(struct page *page) {
     destroy(page);
     free(page);
+    // free(page->uninit.aux);
 }
 
 /* Claim the page that allocate on VA. */
