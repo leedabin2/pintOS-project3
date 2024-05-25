@@ -76,6 +76,12 @@ file_read (struct file *file, void *buffer, off_t size) {
 	return bytes_read;
 }
 
+/* FILE에서 BUFFER로 SIZE 바이트를 읽습니다.
+ * 파일에서 FILE_OFS 오프셋부터 시작합니다.
+ * 실제로 읽은 바이트 수를 반환하며,
+ * 파일 끝에 도달하면 SIZE보다 적을 수 있습니다.
+ * 파일의 현재 위치는 영향을 받지 않습니다. */
+
 /* Reads SIZE bytes from FILE into BUFFER,
  * starting at offset FILE_OFS in the file.
  * Returns the number of bytes actually read,
