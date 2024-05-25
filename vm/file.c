@@ -59,6 +59,8 @@ static void file_backed_destroy(struct page *page) {
 void *do_mmap(void *addr, size_t length, int writable, struct file *file, off_t offset) {
 		// 파일의 오프셋바이트 부터 length 바이트까지 가상주소공간에 데이터를 올리기 위해 load
         // lock_acquire(&filesys_lock);
+        // int cnt;
+       
         /* 사용자가 읽고싶은 영역의 길이 : length */
 		size_t read_bytes = length > file_length(file) ? file_length(file) : length;
 		size_t zero_bytes = PGSIZE - (read_bytes % PGSIZE);
@@ -66,6 +68,14 @@ void *do_mmap(void *addr, size_t length, int writable, struct file *file, off_t 
 
         // 연속된 페이지의 시작 주소 리턴
         void *start_addr = addr;
+        // if (length <= PGSIZE) {
+        //     cnt = 1; // length가 PGSIZE보다 작으면 cnt를 1로 설정
+        // } else if (length % PGSIZE) {
+        //     cnt = length / PGSIZE + 1;
+        // } else
+        // {
+        //     cnt = length / PGSIZE;
+        // }
 
 		while (read_bytes > 0 || zero_bytes > 0) {
         size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
@@ -82,6 +92,10 @@ void *do_mmap(void *addr, size_t length, int writable, struct file *file, off_t 
         if (!vm_alloc_page_with_initializer(VM_FILE, addr, writable, lazy_load_segment, aux))
             return false;
         
+        // struct page *page = spt_find_page(&thread_current()->spt, start_addr);
+        // page->page_cnt = cnt;
+        // cnt--;
+
         read_bytes -= page_read_bytes;
         zero_bytes -= page_zero_bytes;
         addr += PGSIZE;
@@ -92,6 +106,16 @@ void *do_mmap(void *addr, size_t length, int writable, struct file *file, off_t 
 
 /* Do the munmap */
 void do_munmap(void *addr) {
+    
+    // struct page *page =  spt_find_page(&thread_current()->spt, addr); // 매핑해제할 시작주소로 페이지를 가져옴
+    // int cnt = page->page_cnt; 
+    // for (int i = 0; i < cnt; i++)
+    // {
+    //     if (page)
+    //        destroy(page);  // 매핑이 해제되면, 모든 변경사항(pml4 is drity)함수를 통해서 파일에 반영(file_write_at)후 페이지 목록에서 삭제
+    //     addr += PGSIZE;  
+    //     page =  spt_find_page(&thread_current()->spt, addr); 
+    // }
     
     while (true)
     {
