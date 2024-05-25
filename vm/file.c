@@ -20,6 +20,12 @@ static const struct page_operations file_ops = {
 /* The initializer of file vm */
 /* 파일 지원 페이지 하위 시스템을 초기화 */
 void vm_file_init(void) {
+
+    // disk get
+    // 1mb 의 디스크가 있다
+    // 1개의 페이지가 8개의 섹터
+    // bit map 을 만들어서 페이지의 디스크 주소를 찾기 위한 
+    // sw
 }
 
 /* Initialize the file backed page */
@@ -33,11 +39,36 @@ bool file_backed_initializer(struct page *page, enum vm_type type, void *kva) {
 /* Swap in the page by read contents from the file. */
 static bool file_backed_swap_in(struct page *page, void *kva) {
     struct file_page *file_page UNUSED = &page->file;
+    // 파일에서 콘텐츠를 읽어(read 함수 사용 ? ) kva 페이지에서 swap in합니다. 파일 시스템과 동기화해야 합니다.
+    // kva에 page를 올림
+    // file_read_at() 를 사용해서 kva 에 페이지를 올림
+    struct aux *aux = (struct aux *)page->uninit.aux;  
+
+    file_seek(aux->file,aux->ofs);
+    off_t read_bytes = file_read_at(aux->file, kva , aux->page_read_bytes, aux->ofs); // 읽은 바이트 수를 반환
+    
+    if ((int)read_bytes != (int)aux->page_read_bytes)
+        return false;
+
+    memset(kva + aux->page_read_bytes, 0, aux->page_zero_bytes); 
+
+    return true;
 }
 
 /* Swap out the page by writeback contents to the file. */
 static bool file_backed_swap_out(struct page *page) {
+    // victim의 페이지가 들어옴
     struct file_page *file_page UNUSED = &page->file;
+    struct aux* aux = (struct aux *)page->uninit.aux; //file의 aux를 가져옴
+    if(pml4_is_dirty(thread_current()->pml4, page->va)) // 먼저 페이지가 dirty 인지 확인
+    {   
+        // buffer(page->va)에 있는 데이터를 size만큼, file의 file_ofs부터 써줌
+        file_write_at(aux->file , page->va, aux->page_read_bytes ,aux->ofs);  // 변경 사항을 파일에 다시 기록
+        pml4_set_dirty(thread_current()->pml4, page->va, 0); // 변경 사항 다시 변경해줌
+
+    }
+    pml4_clear_page(thread_current()->pml4,page->va);  // present bit을 0으로 만들어서 디스크에 내려(swap out)있음\
+
 }
 
 /* Destory the file backed page. PAGE will be freed by the caller. */
