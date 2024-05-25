@@ -13,6 +13,8 @@
 #include <stdlib.h>
 /* 가상 메모리 서브시스템을 각 서브시스템의 초기화 코드를 호출함으로써 초기화합니다. */
 
+struct list frame_list;
+
 void vm_init(void) {
     vm_anon_init();
     vm_file_init();
@@ -133,6 +135,19 @@ void spt_remove_page(struct supplemental_page_table *spt, struct page *page) {
 static struct frame *vm_get_victim(void) {
     struct frame *victim = NULL;
     /* TODO: The policy for eviction is up to you. */
+	struct thread* curr = thread_current();
+
+    // frame_list를 순회하면서 가장 최근에 사용되지 않은 frame을 찾음
+    for (struct list_elem *elem = list_begin(&frame_list); elem != list_end(&frame_list); elem = list_next(elem)) {
+
+        victim = list_entry(elem, struct frame, frame_elem);
+        // 현재 frame의 PTE가 최근에 접근되었는지 확인
+        if (pml4_is_accessed(curr->pml4, victim->page->va)) { // 최근에 접근했다면 1을 반환
+            continue; 
+        } else {
+            return victim;
+        }
+    }
 
     return victim;
 }
@@ -145,6 +160,8 @@ static struct frame *vm_get_victim(void) {
 static struct frame *vm_evict_frame(void) {
     struct frame *victim UNUSED = vm_get_victim();
     /* TODO: swap out the victim and return the evicted frame. */
+    if(swap_out(victim->page)) return victim;
+	else return NULL;
 
     return NULL;
 }
@@ -161,15 +178,18 @@ static struct frame *vm_evict_frame(void) {
 static struct frame *vm_get_frame(void) {
     // struct frame *frame = NULL;
     /* TODO: Fill this function. */
+    struct frame *frame = (struct frame *)malloc(sizeof(struct frame));
     uint64_t *kva = palloc_get_page(PAL_USER); // palloc_get_page()를 통해 물리적 메모리를 할당하고, kva를 반환함
 
-    if (kva == NULL) 
-        PANIC("todo : swap out 구현해야함.");
-    
-    struct frame *frame = (struct frame *)malloc(sizeof(struct frame));
+    if (kva == NULL) {
+        frame = vm_evict_frame();
+        frame->page = NULL;
+        return frame;
+    }
+
     // 구조체 멤버 초기화
-    frame->kva = kva; 
     frame->page = NULL;
+    list_push_back(&frame_list, &frame->frame_elem);
 
     ASSERT(frame != NULL);
     ASSERT(frame->page == NULL);

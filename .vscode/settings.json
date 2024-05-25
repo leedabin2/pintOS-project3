@@ -57,6 +57,7 @@
     "typeinfo": "c",
     "malloc.h": "c",
     "chrono": "c",
-    "ratio": "c"
+    "ratio": "c",
+    "hash.h": "c"
   }
 }
