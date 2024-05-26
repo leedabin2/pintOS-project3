@@ -72,7 +72,7 @@ static void file_backed_destroy(struct page *page) {
     if(pml4_is_dirty(thread_current()->pml4, page->va)) // 내용이 변경된 경우
     {   
         // buffer(page->va)에 있는 데이터를 size만큼, file의 file_ofs부터 써줌
-        file_write_at(aux->file , page->frame->kva, aux->page_read_bytes ,aux->ofs);  // 변경 사항을 파일에 다시 기록
+        file_write_at(aux->file , page->va, aux->page_read_bytes ,aux->ofs);  // 변경 사항을 파일에 다시 기록
         pml4_set_dirty(thread_current()->pml4, page->va, 0); // 변경 사항 다시 변경해줌
 
     }
@@ -151,7 +151,6 @@ void do_munmap(void *addr) {
     //     destroy(page);  // 매핑이 해제되면, 모든 변경사항(pml4 is drity)함수를 통해서 파일에 반영(file_write_at)후 페이지 목록에서 삭제
     //     addr += PGSIZE;  
     // }
-    
 
     struct page * page = spt_find_page(&thread_current()->spt, addr); // 1. 매핑 해제할 시작주소로 페이지를 가져옴
     int page_cnt = page->page_cnt;

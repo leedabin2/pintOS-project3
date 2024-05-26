@@ -8,25 +8,33 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 
+/* 이 파일의 코드는 ATA (IDE) 컨트롤러에 대한 인터페이스입니다.
+   [ATA-3]에 따르도록 시도합니다. */
 /* The code in this file is an interface to an ATA (IDE)
    controller.  It attempts to comply to [ATA-3]. */
 
+/* ATA 명령 블록 포트 주소 */
 /* ATA command block port addresses. */
-#define reg_data(CHANNEL) ((CHANNEL)->reg_base + 0)     /* Data. */
-#define reg_error(CHANNEL) ((CHANNEL)->reg_base + 1)    /* Error. */
-#define reg_nsect(CHANNEL) ((CHANNEL)->reg_base + 2)    /* Sector Count. */
-#define reg_lbal(CHANNEL) ((CHANNEL)->reg_base + 3)     /* LBA 0:7. */
-#define reg_lbam(CHANNEL) ((CHANNEL)->reg_base + 4)     /* LBA 15:8. */
-#define reg_lbah(CHANNEL) ((CHANNEL)->reg_base + 5)     /* LBA 23:16. */
-#define reg_device(CHANNEL) ((CHANNEL)->reg_base + 6)   /* Device/LBA 27:24. */
-#define reg_status(CHANNEL) ((CHANNEL)->reg_base + 7)   /* Status (r/o). */
-#define reg_command(CHANNEL) reg_status (CHANNEL)       /* Command (w/o). */
+#define reg_data(CHANNEL) ((CHANNEL)->reg_base + 0)     /* Data. */ /* 데이터 */
+#define reg_error(CHANNEL) ((CHANNEL)->reg_base + 1)    /* Error. */ /* 오류 */
+#define reg_nsect(CHANNEL) ((CHANNEL)->reg_base + 2)    /* Sector Count. */  /* 섹터 수 */
+#define reg_lbal(CHANNEL) ((CHANNEL)->reg_base + 3)     /* LBA 0:7. */ /* LBA 0:7 */
+#define reg_lbam(CHANNEL) ((CHANNEL)->reg_base + 4)     /* LBA 15:8. */ /* LBA 15:8 */
+#define reg_lbah(CHANNEL) ((CHANNEL)->reg_base + 5)     /* LBA 23:16. */  /* LBA 23:16 */
+#define reg_device(CHANNEL) ((CHANNEL)->reg_base + 6)   /* Device/LBA 27:24. */ /* 장치/LBA 27:24 */
+#define reg_status(CHANNEL) ((CHANNEL)->reg_base + 7)   /* Status (r/o). */ /* 상태 (읽기 전용) */
+#define reg_command(CHANNEL) reg_status (CHANNEL)       /* Command (w/o). */ /* 명령 (쓰기 전용) */
+
+
+/* ATA 제어 블록 포트 주소 
+   (비유산 ATA 컨트롤러를 지원하는 경우에는 유연하지 않지만,
+   우리가 하는 일에는 괜찮습니다.) */
 
 /* ATA control block port addresses.
    (If we supported non-legacy ATA controllers this would not be
    flexible enough, but it's fine for what we do.) */
-#define reg_ctl(CHANNEL) ((CHANNEL)->reg_base + 0x206)  /* Control (w/o). */
-#define reg_alt_status(CHANNEL) reg_ctl (CHANNEL)       /* Alt Status (r/o). */
+#define reg_ctl(CHANNEL) ((CHANNEL)->reg_base + 0x206)  /* Control (w/o). */  /* 제어 (쓰기 전용) */
+#define reg_alt_status(CHANNEL) reg_ctl (CHANNEL)       /* Alt Status (r/o). */ /* 대체 상태 (읽기 전용) */
 
 /* Alternate Status Register bits. */
 #define STA_BSY 0x80            /* Busy. */
@@ -173,6 +181,17 @@ disk_print_stats (void) {
 	}
 }
 
+
+/* 디스크의 번호가 DEV_NO인 디스크를 반환합니다--master 또는 
+slave를 각각 0 또는 1로 나타냅니다--그리고 채널의 번호는 CHAN_NO입니다.
+
+Pintos는 디스크를 다음과 같이 사용합니다:
+0:0 - 부트 로더, 명령줄 인수, 운영체제 커널
+0:1 - 파일 시스템
+1:0 - 임시 저장소
+1:1 - 스왑
+*/
+
 /* Returns the disk numbered DEV_NO--either 0 or 1 for master or
    slave, respectively--within the channel numbered CHAN_NO.
 
@@ -203,6 +222,9 @@ disk_size (struct disk *d) {
 	return d->capacity;
 }
 
+
+/* 디스크 D에서 섹터 SEC_NO를 읽어 BUFFER에 저장합니다. BUFFER는 DISK_SECTOR_SIZE 바이트를 담을 수 있어야 합니다.
+디스크 접근을 내부적으로 동기화하므로 외부에서 디스크별 잠금은 필요하지 않습니다. */
 /* Reads sector SEC_NO from disk D into BUFFER, which must have
    room for DISK_SECTOR_SIZE bytes.
    Internally synchronizes accesses to disks, so external
@@ -225,6 +247,10 @@ disk_read (struct disk *d, disk_sector_t sec_no, void *buffer) {
 	d->read_cnt++;
 	lock_release (&c->lock);
 }
+
+/* 버퍼(BUFFER)에 있는 DISK_SECTOR_SIZE 바이트를 디스크 D의 섹터 SEC_NO에 씁니다.
+디스크가 데이터를 수신했다고 확인한 후에 반환됩니다.
+디스크에 대한 접근을 내부적으로 동기화하므로, 외부에서 디스크별로 락을 걸 필요는 없습니다. */
 
 /* Write sector SEC_NO to disk D from BUFFER, which must contain
    DISK_SECTOR_SIZE bytes.  Returns after the disk has
@@ -541,6 +567,9 @@ inspect_write_cnt (struct intr_frame *f) {
 	f->R.rax = d->write_cnt;
 }
 
+/* 디스크 D에서 섹터 SEC_NO를 BUFFER로 읽어옵니다.
+   BUFFER는 DISK_SECTOR_SIZE 바이트를 수용할 수 있어야 합니다.
+   디스크에 대한 접근을 내부적으로 동기화하므로 외부에서의 디스크 잠금이 필요하지 않습니다. */
 /* Tool for testing disk r/w cnt. Calling this function via int 0x43 and int 0x44.
  * Input:
  *   @RDX - chan_no of disk to inspect
