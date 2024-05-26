@@ -48,8 +48,9 @@ static bool file_backed_swap_in(struct page *page, void *kva) {
 
     if (file_read(file, kva, page_read_bytes) != (int)page_read_bytes) // file_read -> return bytes
         return false;
+        
     
-    memset (kva + page_read_bytes, page_zero_bytes, 0);
+    memset (kva + page_read_bytes,0,page_zero_bytes);
     
     return true;
 }
@@ -65,7 +66,7 @@ static bool file_backed_swap_out(struct page *page) {
 
     if (pml4_is_dirty(thread_current()->pml4, page->va))
     {
-        file_write_at(aux->file, page->frame->kva, aux->page_read_bytes, aux->ofs);
+        file_write_at(aux->file, page->va, aux->page_read_bytes, aux->ofs);
         pml4_set_dirty(thread_current()->pml4, page->va, 0);
     }
     pml4_clear_page(thread_current()->pml4, page->va);
