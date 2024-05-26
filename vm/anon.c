@@ -57,8 +57,6 @@ static bool anon_swap_in(struct page *page, void *kva) {
 			disk_read(swap_disk,arrow_slot * 8 + i, kva + DISK_SECTOR_SIZE * i); // 디스크 D에서 섹터 SEC_NO를 읽어 BUFFER에 저장
 		}
 
-		pml4_set_page(thread_current()->pml4, page->va, page->frame->kva, page->writable); // pml4 present bit 1 -> 이미 전에 해주는데 
-
 		bitmap_set(swap_table,arrow_slot,false);
 		return true;
 
