@@ -39,7 +39,7 @@ static bool file_backed_swap_in(struct page *page, void *kva) {
     struct aux *aux = (struct aux *)page->uninit.aux;  
 
     file_seek(aux->file,aux->ofs);
-    off_t read_bytes = file_read_at(aux->file, kva , aux->page_read_bytes, aux->ofs); // 읽은 바이트 수를 반환
+    off_t read_bytes = file_read(aux->file, kva , aux->page_read_bytes); // 읽은 바이트 수를 반환
     
     if ((int)read_bytes != (int)aux->page_read_bytes)
         return false;
