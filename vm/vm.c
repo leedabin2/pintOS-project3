@@ -179,6 +179,7 @@ static struct frame *vm_get_frame(void) {
     if (kva == NULL) { 
         frame =  vm_evict_frame(); // 쫓겨난 프레임 반환
         // PANIC("panic!!!!!!");  // 페이지를 쫓아낸 프레임에 대한 패닉?
+        return frame;
     } 
     frame = (struct frame *)malloc(sizeof(struct frame));
 
