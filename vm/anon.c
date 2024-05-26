@@ -47,17 +47,16 @@ bool anon_initializer(struct page *page, enum vm_type type, void *kva) {
 static bool anon_swap_in(struct page *page, void *kva) {
     struct anon_page *anon_page = &page->anon;
 		
-		int arrow_slot = bitmap_test(swap_table, anon_page->swap_idx); // anon_page에 저장한 slot 정보를 통해 swap_disk에 내용가져오기
-		
-		if (!arrow_slot)
-			return false;
+		if (bitmap_test(swap_table, anon_page->swap_idx) == false) // anon_page에 저장한 slot 정보를 통해 swap_disk에 내용가져오기
+			return false; 
 		
 		for (int i = 0; i < 8; ++i)
 		{
-			disk_read(swap_disk,arrow_slot * 8 + i, kva + DISK_SECTOR_SIZE * i); // 디스크 D에서 섹터 SEC_NO를 읽어 BUFFER에 저장
+			disk_read(swap_disk, anon_page->swap_idx * 8 + i, kva + DISK_SECTOR_SIZE * i); // 디스크 swap_disk 에서 섹터 SEC_NO를 읽어 BUFFER에 저장
 		}
 
-		bitmap_set(swap_table,arrow_slot,false);
+		bitmap_set(swap_table,anon_page->swap_idx,false);
+		
 		return true;
 
 }
