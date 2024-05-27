@@ -34,7 +34,6 @@ bool file_backed_initializer(struct page *page, enum vm_type type, void *kva) {
 static bool file_backed_swap_in(struct page *page, void *kva) {
     struct file_page *file_page UNUSED = &page->file;
     // 파일에서 콘텐츠를 읽어(read 함수 사용 ? ) kva 페이지에서 swap in합니다. 파일 시스템과 동기화해야 합니다.
-    // kva에 page를 올림
     // file_read_at() 를 사용해서 kva 에 페이지를 올림
     struct aux *aux = (struct aux *)page->uninit.aux;  
 
@@ -83,7 +82,6 @@ static void file_backed_destroy(struct page *page) {
 /* Do the mmap */
 void *do_mmap(void *addr, size_t length, int writable, struct file *file, off_t offset) {
 		// 파일의 오프셋바이트 부터 length 바이트까지 가상주소공간에 데이터를 올리기 위해 load
-        // lock_acquire(&filesys_lock);
         int cnt;
        
         /* 사용자가 읽고싶은 영역의 길이 : length */
@@ -93,14 +91,6 @@ void *do_mmap(void *addr, size_t length, int writable, struct file *file, off_t 
 
         // 연속된 페이지의 시작 주소 리턴
         void *start_addr = addr;
-        // if (length <= PGSIZE) {
-        //     cnt = 1; // length가 PGSIZE보다 작으면 cnt를 1로 설정
-        // } else if (length % PGSIZE) {
-        //     cnt = (length / PGSIZE) + 1;
-        // } else
-        // {
-        //     cnt = length / PGSIZE;
-        // }
 
         if (read_bytes % PGSIZE == 0)
         {
@@ -140,17 +130,6 @@ void *do_mmap(void *addr, size_t length, int writable, struct file *file, off_t 
 
 /* Do the munmap */
 void do_munmap(void *addr) {
-    
-    // while (true)
-    // {
-    //     struct page *page =  spt_find_page(&thread_current()->spt, addr); // 매핑해제할 시작주소로 페이지를 가져옴
-
-    //     if (page == NULL)
-    //         break;
-
-    //     destroy(page);  // 매핑이 해제되면, 모든 변경사항(pml4 is drity)함수를 통해서 파일에 반영(file_write_at)후 페이지 목록에서 삭제
-    //     addr += PGSIZE;  
-    // }
 
     struct page * page = spt_find_page(&thread_current()->spt, addr); // 1. 매핑 해제할 시작주소로 페이지를 가져옴
     int page_cnt = page->page_cnt;
@@ -161,6 +140,5 @@ void do_munmap(void *addr) {
         addr += PGSIZE;
         page = spt_find_page(&thread_current()->spt, addr);
     }
-
     
 }

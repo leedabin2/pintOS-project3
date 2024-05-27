@@ -28,9 +28,8 @@ void vm_anon_init(void) {
     // swap_disk = NULL;
     swap_disk = disk_get(1, 1);  // 1:1 - 스왑디스크
     // // 스왑 영역도 PGSIZE(4096바이트) 단위로 관리
-    // 스왑 테이블이 필요하겠지? - bit_map으로 관리, 사용가능한 slot공간 찾을 수 있도록 설정
+    // 스왑 테이블이 필요 - bit_map으로 관리, 사용가능한 slot공간 찾을 수 있도록 설정
     size_t swap_disk_size = disk_size(swap_disk) / 8; // swap disk에 들어갈 수 있는 페이지 개수 
-    // size_t bitmap_size = bitmap_buf_size(swap_disk_size);  // 원하는 크기의 bitmap을 생성하기위해 필요함?
     swap_table = bitmap_create(swap_disk_size);            // swap disk 크기만큼 동적 할당
 }
 
@@ -92,7 +91,6 @@ static bool anon_swap_out(struct page *page) {
 /* Destroy the anonymous page. PAGE will be freed by the caller. */
 static void anon_destroy(struct page *page) {
     struct anon_page *anon_page = &page->anon;
-
 		// anon의 자원들을 free , 페이지 구조체를 free할 필요없음
     // if (page->frame->kva)
     // {

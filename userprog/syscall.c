@@ -150,8 +150,7 @@ void check_address(void *addr) {
 
     if (addr == NULL || !is_user_vaddr(addr))  // 사용자 영역 주소인지 확인
         exit(-1);
-    // if (pml4_get_page(t->pml4, addr) == NULL)  // 페이지로 할당된 영역인지 확인
-    //     exit(-1);
+
     if (spt_find_page(&t->spt, addr) == NULL) // 할당받은 페이지를 확인
     {
         exit(-1);
@@ -212,7 +211,6 @@ void exit(int status) {
     if (first_token != NULL) {
         // 토큰이 성공적으로 추출되었다면, 이를 다루는 로직
           printf("%s: exit(%d)\n", first_token, t->exit_status);
-        //   printf("%s: exit(0)\n", first_token);
     }
  
     thread_exit();
@@ -242,7 +240,6 @@ int open(const char *name) {
         lock_release(&filesys_lock);
         return -1;
     }
-    // lock_release(&filesys_lock);
 
     int fd = add_file_to_fdt(file_obj);
     if (fd == -1) {
@@ -324,15 +321,7 @@ int read(int fd, void *buffer, unsigned size) {
     struct file *file = fd_to_fileptr(fd);
 
     // 버퍼가 유효한 주소인지 체크
-    // check_address(buffer);
     check_valid_buffer(buffer, size, true);
-
-    // struct page *page = spt_find_page(&thread_current()->spt, buffer);
-    // if (page == NULL || page->writable == 0 || !is_user_vaddr(page->va))
-    // {
-    //     exit(-1);
-    // }
-
 
     // fd가 0이면 (stdin) input_getc()를 사용해서 키보드 입력을 읽고 버퍼에 저장(?)
     if (fd == 0) {
@@ -344,10 +333,6 @@ int read(int fd, void *buffer, unsigned size) {
         exit(-1); // 유효하지 않은 파일 디스크립터
     }
 
-    // 구현 필요
-    // lock을 이용해서 커널이 파일을 읽는 동안 다른 스레드가 이 파일을 읽는 것을 막아야함
-
-    // filesys_lock 선언(syscall.h에 만들기)
     // syscall_init에도 lock 초기화함수 lock_init을 선언  
     lock_acquire(&filesys_lock); 
     // 그 외는 파일 객체 찾고, size 바이트 크기 만큼 파일을 읽어서 버퍼에 넣어준다.
@@ -398,11 +383,6 @@ pid_t fork (const char *thread_name) {
 
 int wait (pid_t pid)
 {
-    /* 자식 프로세스가 종료 될 때까지 대기 */
-    // 커널이 부모에게 자식의 종료 상태를 반환해줘야함
-    // 자식의 종료 상태(exit status)를 가져옴
-    // 만약 pid (자식 프로세스)가 아직 살아있으면, 종료 될 때 까지 기다립니다.
-    //  종료가 되면 그 프로세스가 exit 함수로 전달해준 상태(exit status)를 반환합니다. 
 	return process_wait(pid);
 }
 
@@ -429,23 +409,18 @@ int exec (const char *cmd_line) {
 void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
     // fd로 열린 파일의 오프셋 바이트부터 length 바이트 만큼을 프로세스의 가상주소공간에 매핑
 
-    // lock_acquire(&filesys_lock);
 	struct file *file = fd_to_fileptr(fd); /* fd로 file을 열고*/
-    // lock_release(&filesys_lock);
+
     struct page *page = spt_find_page(&thread_current()->spt,addr); // 기존 매핑된 페이지가 있는지
     
     if (!is_user_vaddr(addr+length) || !is_user_vaddr(addr))
         return false;
     
-    // if (!offset != pg_round_down(offset)) // mmap-kernel test case 통과
-    //     return false;
-
     if ((long)length <= 0 || fd == 0 || fd == 1 || fd == 2 || (offset % PGSIZE) != 0 || addr == NULL || page || addr != pg_round_down(addr) || !file)  // 매핑을 실패하는 조건
         return false; 
-    //file_length(file) <= 0
-    // lock_acquire(&filesys_lock);
+
     return do_mmap(addr, length, writable, file, offset); // 매핑 정보를 전달 
-    // lock_release(&filesys_lock);
+
 }
 
 void munmap (void *addr) {

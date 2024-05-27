@@ -123,12 +123,7 @@ bool spt_insert_page(struct supplemental_page_table *spt UNUSED, struct page *pa
     // int succ = false;
     /* TODO: Fill this function. */
 
-    // struct hash *hash = page_hash(&page->spt_entry, NULL);
-    // if (spt->spt_hash.hash == hash) 
-        // spt에 페이지 구조체 삽입
     return page_insert(&spt->spt_hash, page);
-    
-    // return succ;
 }
 
 void spt_remove_page(struct supplemental_page_table *spt, struct page *page) {
@@ -155,9 +150,7 @@ static struct frame *vm_evict_frame(void) {
     struct frame *victim UNUSED = vm_get_victim();
     /* TODO: swap out the victim and return the evicted frame. */
     swap_out(victim->page); // 희생할 빅팀의 페이지 보내기
-    // if (victim == NULL)
-    //     return NULL;
-    
+
     return victim; 
 }
 
@@ -215,8 +208,6 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool us
     if (addr == NULL || !is_user_vaddr(addr)) // 사용자 주소가 아닌 경우 
         return false;
 
-    // struct intr_frame *user_if = pg_round_up(thread_current() + 1) - sizeof(struct intr_frame);
-	// void *rsp = user_if->rsp;
     void *rsp = f->rsp; 
     if (!user) { // ex) syscall 의 커널모드에서 페이지 폴트가 나서 , user stack을 증가시켜야 할 때, 
         void *rsp = thread_current()->rsp; // syscall에서 커널모드로 전환하기 전에 저장한 user모드의 rsp를 가져옴
@@ -236,16 +227,9 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool us
         }
         return vm_do_claim_page(page);
     }
-    
-    // 유저 프로세스가 접근하려던 주소에서 데이터를 얻을 수 없거나, 페이지가 커널 가상 메모리 영역에 존재하거나, 읽기 전용 페이지에 대해 쓰기를 시도하는 상황 
-    // 프로세스를 종료시키고 프로세스의 모든 자원을 해제합니다.
     /* TODO: Validate the fault */
     /* TODO: Your code goes here */
-    // 그렇지 않다면, bogus 폴트 (일단 , 지연 로딩의 경우)
-    // 콘텐츠를 로드
-    // bogus 폴트의 case - 지연 로딩 페이지 , 스왑 아웃 페이지, 쓰기 보호페이지 (extra)
-    // 지연 로딩 페이지의 경우 - vm_alloc_page_with_initializer 함수에서 세팅해 놓은 초기화 함수를 호출
-    // process.c 의 lazy_load_segment 함수 구현해야 함
+
     return false;
 }
 
@@ -260,9 +244,6 @@ void vm_dealloc_page(struct page *page) {
 bool vm_claim_page(void *va UNUSED) {
     struct page *page = NULL;
     /* TODO: Fill this function */
-    // va에 page를 할당
-    // page = (struct page *)malloc(sizeof(page)); // 의문 : page 메모리 영역이 없는데 spt_find_page 를 먼저 사용해서 어케 page를 할당받음 ? -.-
-    // page->va = va;
 
     // 해당 page에 프레임을 할당 
     page = spt_find_page(&thread_current()->spt,va);
@@ -284,13 +265,12 @@ static bool vm_do_claim_page(struct page *page) {
 
     /* TODO: Insert page table entry to map page's VA to frame's PA. */
     // 가상주소와 물리주소를 매핑한 정보를 진짜 페이지 테이블인 pml4에 추가
-    // 성공하면 true, 실패하면 false 
     if (frame->page != NULL) {
         if (!pml4_set_page(curr->pml4,page->va,frame->kva,page->writable)) // pml4 present bit 1 
             return false;
     }
  
-    return swap_in(page, frame->kva); // 물리 메모리에 페이지를 올리는 과정 (데이터는 안 올라감 ? )
+    return swap_in(page, frame->kva); // 물리 메모리에 페이지를 올리는 과정 (데이터는 안 올라감)
 }
 
 /* Initialize new supplemental page table */
@@ -301,7 +281,7 @@ void supplemental_page_table_init(struct supplemental_page_table *spt UNUSED) {
 
 /* Copy supplemental page table from src to dst */
 bool supplemental_page_table_copy(struct supplemental_page_table *dst UNUSED, struct supplemental_page_table *src UNUSED) {
-    // src 부터 dst 까지 보조 페이지 테이블 복사
+
     // src 의 보조 페이지 테이블을 반복하면서, 목적지 보조 테이블의 엔트리의 정확한 복사본을 만들기
 
     struct hash_iterator i; 
