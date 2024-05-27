@@ -1,5 +1,5 @@
 # SW Jungle - PintOS Project
-
+---
 
 ## 💻 Project Introduntion
 
@@ -23,6 +23,17 @@ Project 3 : VIRTUAL MEMORY (2024.05.14 ~ 2024.05.27)
   - ✅ Memory Mapped Files
   - ✅ Swap In/Out
   - ❎ (Option) Copy-on-write
+    
+---
+
+## 👥 Project Member
+  - Dabin&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;https://github.com/leedabin2
+    
+  - Jinyong&nbsp;&nbsp;&nbsp;https://github.com/Bambamsong
+    
+  - Geonu&nbsp;&nbsp;&nbsp;&nbsp;https://github.com/GEONU-MOON
+    
+---
 
 <details>
 <summary>Test Case Result</summary>
@@ -176,13 +187,6 @@ FAIL tests/vm/cow/cow-simple
 
 ---
 
-### Project Member
-  - Dabin&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;https://github.com/leedabin2
-    
-  - Jinyong&nbsp;&nbsp;&nbsp;https://github.com/Bambamsong
-    
-  - Geonu&nbsp;&nbsp;&nbsp;&nbsp;https://github.com/GEONU-MOON
----
 ### Books that may be helpful
   - “Operating Systems: Three Easy Pieces”
 
