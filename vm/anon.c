@@ -65,26 +65,26 @@ static bool anon_swap_in(struct page *page, void *kva) {
 static bool anon_swap_out(struct page *page) {
     struct anon_page *anon_page = &page->anon;
 		// swap_disk, swap_table 에서 사용가능한 slot공간 찾기 - 추후 사용 slot의 bit -> true 으로 바꿔줘야 함
-		int arrow_slot = bitmap_scan(swap_table,0,1,false);  // 단일 페이지 
+		int slot_no = bitmap_scan(swap_table,0,1,false);  // 단일 페이지 
 
-		if (arrow_slot == BITMAP_ERROR)
+		if (slot_no == BITMAP_ERROR)
 			return false;
 		
 		for (int i = 0; i < 8; ++i) 
 		{	
 			// page->frame->kva의 데이터를 slot에 write // 어차피 매핑된 상태에서의 데이터를 쓰는 거니까 page->va 도 상관없을 듯
 			// 디스크의 섹터 SEC_NO에 BUFFER에 저장된 DISK_SECTOR_SIZE 바이트의 데이터를 쓰는 역할
-			disk_write(swap_disk, arrow_slot * 8 + i, page->va + DISK_SECTOR_SIZE * i);
+			disk_write(swap_disk, slot_no * 8 + i, page->va + DISK_SECTOR_SIZE * i);
 
 		}
 
 		// 추후 사용 slot의 bit -> true 
-		bitmap_set(swap_table, arrow_slot, true);
+		bitmap_set(swap_table, slot_no, true);
 		// present bit 0으로 설정 - 물리 메모리와 매핑 해제
 		pml4_clear_page(thread_current()->pml4, page->va);
 		
 		// page->anonpage에 사용한 slot의 정보(데이터의 위치)를 저장
-		anon_page->swap_idx = arrow_slot;
+		anon_page->swap_idx = slot_no;
 		// 만약 디스크에 슬롯이 없다면 커널 패닉
 		return true;
 }
