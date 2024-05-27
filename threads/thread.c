@@ -416,15 +416,28 @@ bool more_priority(struct list_elem *e1, struct list_elem *e2, void *aux) {
 }
 
 // 우선순위 스케줄링 하는 함수
-void test_max_priority(void) {
+// void test_max_priority(void) {
+//     struct thread *curr = thread_current();
+//     struct list_elem *highest_elem = list_begin(&ready_list);
+//     if (list_end(&ready_list) == (highest_elem)) {
+//         return;
+//     }
+//     // 인터럽트 컨텍스트가 아니고, 현재 스레드의 우선순위가 준비 리스트의 최고 우선순위 스레드보다 낮다면
+//     if (!intr_context() && less_priority(&curr->elem, highest_elem, NULL)) {
+//         thread_yield();
+//     }
+// }
+
+void test_max_priority() {
     struct thread *curr = thread_current();
-    struct list_elem *highest_elem = list_begin(&ready_list);
-    if (list_end(&ready_list) == (highest_elem)) {
+    if (curr == idle_thread)
         return;
-    }
-    // 인터럽트 컨텍스트가 아니고, 현재 스레드의 우선순위가 준비 리스트의 최고 우선순위 스레드보다 낮다면
-    if (!intr_context() && less_priority(&curr->elem, highest_elem, NULL)) {
-        thread_yield();
+    struct thread *high_priority_ready_thread = list_entry(list_begin(&ready_list), struct thread, elem);
+    if (curr->priority < high_priority_ready_thread->priority) {  //
+        if (intr_context())
+            intr_yield_on_return;
+        else
+            thread_yield();
     }
 }
 

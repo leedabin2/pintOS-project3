@@ -48,13 +48,17 @@ uninit_initialize (struct page *page, void *kva) {
 	struct uninit_page *uninit = &page->uninit;
 
 	/* Fetch first, page_initialize may overwrite the values */
-	vm_initializer *init = uninit->init;
+	vm_initializer *init = uninit->init; // 여기에 lazy_load_segment 가 들어감 -> aux 를 사용해서 세그먼트를 메모리에서 읽어오기 위함 (파일에서 세그먼트를 로드)
 	void *aux = uninit->aux;
 
 	/* TODO: You may need to fix this function. */
 	return uninit->page_initializer (page, uninit->type, kva) &&
 		(init ? init (page, aux) : true);
 }
+
+/* uninit_page가 보유한 자원을 해제합니다. 대부분의 페이지는 다른 페이지 객체로 변환되지만,
+ * 프로세스가 종료될 때 실행 중에 한 번도 참조되지 않은 uninit 페이지가 남아 있을 수 있습니다.
+ * PAGE는 호출자에 의해 해제될 것입니다. */
 
 /* Free the resources hold by uninit_page. Although most of pages are transmuted
  * to other page objects, it is possible to have uninit pages when the process
@@ -65,4 +69,9 @@ uninit_destroy (struct page *page) {
 	struct uninit_page *uninit UNUSED = &page->uninit;
 	/* TODO: Fill this function.
 	 * TODO: If you don't have anything to do, just return. */
+
+	// struct aux *aux = page->uninit.aux;
+
+	// free(aux);
+
 }

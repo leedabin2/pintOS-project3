@@ -1,20 +1,14 @@
 {
   "configurations": [
     {
-      "name": "Pintos",
-      "includePath": [
-        "${workspaceFolder}/include",
-        "${workspaceFolder}/include/lib",
-        "${workspaceFolder}/include/lib/kernel",
-        "${workspaceFolder}/include/lib/user",
-        "${workspaceFolder}/include/threads",
-        "${workspaceFolder}/include/filesys",
-        "${workspaceFolder}/include/userprog",
-        "${workspaceFolder}/include/vm",
-        "${workspaceFolder}/tests",
-        "${workspaceFolder}/tests/userprog",
-        "${workspaceFolder}/**"
-      ]
+      "name": "Linux",
+      "includePath": ["${workspaceFolder}/**"],
+      "defines": ["USERPROG", "VM"],
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "c17",
+      "cppStandard": "c++98",
+      "intelliSenseMode": "linux-gcc-x64",
+      "configurationProvider": "ms-vscode.makefile-tools"
     }
   ],
   "version": 4

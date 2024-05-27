@@ -176,6 +176,8 @@ bitmap_flip (struct bitmap *b, size_t bit_idx) {
 	asm ("lock xorq %1, %0" : "=m" (b->bits[idx]) : "r" (mask) : "cc");
 }
 
+
+/* B에서 IDX로 번호가 매겨진 비트의 값을 반환합니다. */
 /* Returns the value of the bit numbered IDX in B. */
 bool
 bitmap_test (const struct bitmap *b, size_t idx) {
@@ -224,6 +226,7 @@ bitmap_count (const struct bitmap *b, size_t start, size_t cnt, bool value) {
 	return value_cnt;
 }
 
+/* B에서 START부터 START + CNT까지의 비트 중에서 하나라도 VALUE로 설정되어 있으면 true를 반환하고, 그렇지 않으면 false를 반환합니다. */
 /* Returns true if any bits in B between START and START + CNT,
    exclusive, are set to VALUE, and false otherwise. */
 bool
@@ -263,6 +266,8 @@ bitmap_all (const struct bitmap *b, size_t start, size_t cnt) {
 
 /* Finding set or unset bits. */
 
+/* B에서 START 이후로 CNT개의 연속된 비트가 모두 VALUE로 설정된 첫 번째 그룹의 시작 인덱스를 찾아 반환합니다.
+만약 그러한 그룹이 없다면 BITMAP_ERROR를 반환합니다. */
 /* Finds and returns the starting index of the first group of CNT
    consecutive bits in B at or after START that are all set to
    VALUE.

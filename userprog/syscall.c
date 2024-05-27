@@ -35,6 +35,8 @@ unsigned tell(int fd);
 void close (int fd);
 int wait (pid_t pid);
 int exec(const char *cmd_line);
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset);
+void munmap (void *addr);
 
 /* 시스템 호출.
  *
@@ -84,10 +86,11 @@ syscall_init (void) {
 void syscall_handler(struct intr_frame *f UNUSED) {
 
     int sys_num = f->R.rax;
-
+    // for project3, 예외 발생시 유저모드의 rsp를 커널모드로 전환하기 전에 현재스레드의 rsp에 저장하기 위함
+    thread_current()->rsp = f->rsp; 
     switch (sys_num) {
         case SYS_HALT:
-            halt();
+            halt(); 
             break;
         case SYS_WRITE:
             f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
@@ -128,6 +131,13 @@ void syscall_handler(struct intr_frame *f UNUSED) {
         case SYS_CLOSE:
             close(f->R.rdi);
             break;
+        /* for project 3 */
+        case SYS_MMAP:
+            f->R.rax = mmap(f->R.rdi,f->R.rsi,f->R.rdx,f->R.r10, f->R.r8);
+            break;
+        case SYS_MUNMAP:
+            munmap(f->R.rdi);
+            break;
         default:
             thread_exit();
             break;
@@ -140,8 +150,33 @@ void check_address(void *addr) {
 
     if (addr == NULL || !is_user_vaddr(addr))  // 사용자 영역 주소인지 확인
         exit(-1);
-    if (pml4_get_page(t->pml4, addr) == NULL)  // 페이지로 할당된 영역인지 확인
+
+    if (spt_find_page(&t->spt, addr) == NULL) // 할당받은 페이지를 확인
+    {
         exit(-1);
+    }
+
+}
+
+struct page *is_valid_address(void *addr) {
+    struct thread *curr = thread_current();
+    char temp = *(char *)addr;
+
+    if (is_kernel_vaddr(addr) || addr == NULL)
+        return NULL;
+
+    return spt_find_page(&curr->spt, addr);
+}
+
+
+void check_valid_buffer(void *buffer, size_t size, bool writable) {
+    for (size_t i = 0; i < size; i++) {
+        /* buffer가 spt에 존재하는지 검사 */
+        struct page *page = is_valid_address(buffer + i);
+
+        if (!page || (writable && !(page->writable)))
+            exit(-1);
+    }
 }
 
 /* fd로 file 주소를 반환하는 함수 */
@@ -183,33 +218,43 @@ void exit(int status) {
 
 bool create(const char *name, unsigned initial_size) {
     check_address(name);
-    return filesys_create(name, initial_size);
+    lock_acquire(&filesys_lock);
+    bool ok = filesys_create(name, initial_size);
+    lock_release(&filesys_lock);
+    return ok;
 }
 
 bool remove(const char *name) {
     check_address(name);
-    return filesys_remove(name);
+    lock_acquire(&filesys_lock);
+    bool ok = filesys_remove(name);
+    lock_release(&filesys_lock);
+    return ok;
 }
 
 int open(const char *name) {
     check_address(name);
+    lock_acquire(&filesys_lock);
     struct file *file_obj = filesys_open(name);
     if (file_obj == NULL) {
+        lock_release(&filesys_lock);
         return -1;
     }
 
     int fd = add_file_to_fdt(file_obj);
-
     if (fd == -1) {
         file_close(file_obj);
     }
+
+    lock_release(&filesys_lock);
 
     return fd;
 }
 
 /* console 출력하는 함수 */
 int write(int fd, const void *buffer, unsigned size) {
-    check_address(buffer);
+    // check_address(buffer);
+    check_valid_buffer(buffer, size,  false);
     struct file *file = fd_to_fileptr(fd);
     int result;
 
@@ -276,7 +321,7 @@ int read(int fd, void *buffer, unsigned size) {
     struct file *file = fd_to_fileptr(fd);
 
     // 버퍼가 유효한 주소인지 체크
-    check_address(buffer);
+    check_valid_buffer(buffer, size, true);
 
     // fd가 0이면 (stdin) input_getc()를 사용해서 키보드 입력을 읽고 버퍼에 저장(?)
     if (fd == 0) {
@@ -288,12 +333,8 @@ int read(int fd, void *buffer, unsigned size) {
         exit(-1); // 유효하지 않은 파일 디스크립터
     }
 
-    // 구현 필요
-    // lock을 이용해서 커널이 파일을 읽는 동안 다른 스레드가 이 파일을 읽는 것을 막아야함
-
-    // filesys_lock 선언(syscall.h에 만들기)
     // syscall_init에도 lock 초기화함수 lock_init을 선언  
-    lock_acquire(&filesys_lock);
+    lock_acquire(&filesys_lock); 
     // 그 외는 파일 객체 찾고, size 바이트 크기 만큼 파일을 읽어서 버퍼에 넣어준다.
     off_t read_count = file_read (file, buffer, size);
     lock_release(&filesys_lock);
@@ -309,8 +350,9 @@ void seek (int fd, unsigned position) {
     if (file == NULL) {
         return -1;  // 유효하지 않은 파일 디스크립터로 인한 종료
     }
-
+    lock_acquire(&filesys_lock);
     file_seek (file, position);
+    lock_release(&filesys_lock);
 }
 
 unsigned tell (int fd) {
@@ -341,11 +383,6 @@ pid_t fork (const char *thread_name) {
 
 int wait (pid_t pid)
 {
-    /* 자식 프로세스가 종료 될 때까지 대기 */
-    // 커널이 부모에게 자식의 종료 상태를 반환해줘야함
-    // 자식의 종료 상태(exit status)를 가져옴
-    // 만약 pid (자식 프로세스)가 아직 살아있으면, 종료 될 때 까지 기다립니다.
-    //  종료가 되면 그 프로세스가 exit 함수로 전달해준 상태(exit status)를 반환합니다. 
 	return process_wait(pid);
 }
 
@@ -365,4 +402,28 @@ int exec (const char *cmd_line) {
         exit(-1);
     }
     return result;
+}
+
+/* for project3 memory */
+
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
+    // fd로 열린 파일의 오프셋 바이트부터 length 바이트 만큼을 프로세스의 가상주소공간에 매핑
+
+	struct file *file = fd_to_fileptr(fd); /* fd로 file을 열고*/
+
+    struct page *page = spt_find_page(&thread_current()->spt,addr); // 기존 매핑된 페이지가 있는지
+    
+    if (!is_user_vaddr(addr+length) || !is_user_vaddr(addr))
+        return false;
+    
+    if ((long)length <= 0 || fd == 0 || fd == 1 || fd == 2 || (offset % PGSIZE) != 0 || addr == NULL || page || addr != pg_round_down(addr) || !file)  // 매핑을 실패하는 조건
+        return false; 
+
+    return do_mmap(addr, length, writable, file, offset); // 매핑 정보를 전달 
+
+}
+
+void munmap (void *addr) {
+	// mmap에 대한 호출에 의해 반환된 가상주소 - 페이지의 시작주소
+    do_munmap(addr);
 }

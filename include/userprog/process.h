@@ -10,4 +10,15 @@ int process_wait (tid_t);
 void process_exit (void);
 void process_activate (struct thread *next);
 
+/* for project 3 */
+bool lazy_load_segment(struct page *page, void *aux);
+
+struct aux {
+	struct file *file ;
+	off_t ofs; 
+	bool writable;
+	uint32_t page_zero_bytes;
+	uint32_t page_read_bytes;
+};
+
 #endif /* userprog/process.h */
