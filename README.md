@@ -3,12 +3,12 @@
 
 ## 💻 Project Introduntion
 
-Project 1 : THREADS        (2024.04.25 ~ 2024.05.01)
+**Project 1 : THREADS**        (2024.04.25 ~ 2024.05.01)
   - ✅ Alarm clock
   - ✅ Priority Scheduling
   - ❎ (Option) Advanced Scheduler
     
-Project 2 : USER PROGRAMS  (2024.05.02 ~ 2024.05.13)
+**Project 2 : USER PROGRAMS**  (2024.05.02 ~ 2024.05.13)
   - ✅ Argument Passing
   - ✅ User Memory Access
   - ✅ System Calls
@@ -16,7 +16,7 @@ Project 2 : USER PROGRAMS  (2024.05.02 ~ 2024.05.13)
   - ✅ Deny Write on Executables
   - ❎ (Option) Extend File Descriptor
     
-Project 3 : VIRTUAL MEMORY (2024.05.14 ~ 2024.05.27)
+**Project 3 : VIRTUAL MEMORY** (2024.05.14 ~ 2024.05.27)
   - ✅ Memory Management
   - ✅ Anonymous Page
   - ✅ Stack Growth
